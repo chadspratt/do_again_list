@@ -42,21 +42,21 @@ def create_event(request):
 
 @require_POST
 def update_event(request, event_id):
-    """Update an event's date to now."""
+    """Update an event's date to specified time."""
     try:
         data = json.loads(request.body)
         event = get_object_or_404(PastEvents, id=event_id)
         
-        if data.get('set_to_now'):
-            # Save the old date to history before updating
-            HistoricalEvent.objects.create(
-                past_event=event,
-                date=event.date
-            )
-            
-            event.date = timezone.now()
-            event.save()
-            return JsonResponse({'success': True})
+        # Save the old date to history before updating
+        HistoricalEvent.objects.create(
+            past_event=event,
+            date=event.date
+        )
+        
+        from dateutil import parser
+        event.date = parser.isoparse(data['datetime'])
+        event.save()
+        return JsonResponse({'success': True})
         
         return JsonResponse({'success': False, 'error': 'Invalid request'})
     except Exception as e:
