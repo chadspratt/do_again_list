@@ -48,6 +48,10 @@
         .event-card .event-actions input[type="text"] { flex: 1; min-width: 100px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: .8rem; }
         .event-card .delete-icon { position: absolute; top: 12px; right: 12px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
         .event-card .delete-icon:hover { opacity: 1; }
+        .event-card .duration-icon { position: absolute; top: 12px; right: 38px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
+        .event-card .duration-icon:hover { opacity: 1; }
+        .event-card .min-time-icon { position: absolute; top: 12px; right: 64px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
+        .event-card .min-time-icon:hover { opacity: 1; }
         .events-empty { text-align: center; color: #999; padding: 60px 20px; font-size: 1.1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
     </style>
 </head>
@@ -72,20 +76,60 @@
     <div class="events-grid" id="eventsList">
         {% if events %}
         {% for event in events %}
-        <div class="event-card" data-event-id="{{ event.id }}" data-event-date="{{ event.date.isoformat }}">
+        <div class="event-card" data-event-id="{{ event.id }}" data-event-start="{{ event.start_time.isoformat }}" data-event-end="{% if event.end_time %}{{ event.end_time.isoformat }}{% endif %}" data-default-duration="{{ event.default_duration }}" data-min-time="{{ event.min_time_between_events }}">
             <span class="delete-icon" onclick="deleteEvent({{ event.id }})" title="Delete event">🗑️</span>
+            <span class="duration-icon" onclick="openDurationModal({{ event.id }}, {{ event.default_duration }})" title="Set default duration">🕐</span>
+            <span class="min-time-icon" onclick="openMinTimeModal({{ event.id }}, '{{ event.min_time_between_events }}')" title="Set min time between events">🚫</span>
             <div class="event-title">{{ event.title }}</div>
             <div class="event-date" data-date-display="{{ event.id }}"></div>
             <div class="event-timer" data-timer="{{ event.id }}"></div>
-            <div class="event-actions">
-                <input type="text" placeholder="e.g. 1h30m" id="updateInput{{ event.id }}">
-                <button class="btn btn-primary btn-sm" onclick="updateEventToNow({{ event.id }})">Update</button>
+            <div class="event-actions" id="startActions{{ event.id }}">
+                <input type="text" placeholder="start e.g. 1h30m" id="startInput{{ event.id }}"{% if not event.end_time %} style="display:none"{% endif %}>
+                <button class="btn btn-success btn-sm" onclick="startEvent({{ event.id }})"{% if not event.end_time %} style="display:none"{% endif %}>Start</button>
+            </div>
+            <div class="event-actions" id="endActions{{ event.id }}" style="margin-top: 6px;">
+                <input type="text" placeholder="end e.g. 1h30m" id="endInput{{ event.id }}">
+                <button class="btn btn-primary btn-sm" onclick="endEvent({{ event.id }})">End</button>
             </div>
         </div>
         {% endfor %}
         {% else %}
         <div class="events-empty">No events yet. Click "Add Event" to create your first one.</div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Duration Modal -->
+<div class="modal-overlay" id="durationModal" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal">
+        <h2>Default Duration</h2>
+        <input type="hidden" id="durationEventId">
+        <div class="form-group">
+            <label>Duration (minutes)</label>
+            <input type="number" id="durationInput" min="0" placeholder="e.g. 60">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Used to auto-fill start time when clicking End and the start input is blank. Set to 0 to disable.</small>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('durationModal').classList.remove('active')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveDuration()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Min Time Between Events Modal -->
+<div class="modal-overlay" id="minTimeModal" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal">
+        <h2>Min Time Between Events</h2>
+        <input type="hidden" id="minTimeEventId">
+        <div class="form-group">
+            <label>Minimum time (e.g. 1d5h, 2h, 30m)</label>
+            <input type="text" id="minTimeInput" placeholder="e.g. 1d5h or leave blank to disable">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">If time since last end is less than this, the Start/End controls will be hidden. Leave blank to disable.</small>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('minTimeModal').classList.remove('active')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveMinTime()">Save</button>
+        </div>
     </div>
 </div>
 
@@ -114,22 +158,41 @@
 </div>
 
 <script>
+// Parse time offset string to milliseconds (returns 0 if blank/invalid)
+function parseTimeOffsetMs(input) {
+    if (!input || input.trim() === '') return 0;
+    let totalMs = 0;
+    const dayMatch = input.match(/(\d+)d/);
+    const hourMatch = input.match(/(\d+)h/);
+    const minMatch = input.match(/(\d+)m/);
+    const secMatch = input.match(/(\d+)s/);
+    if (dayMatch) totalMs += parseInt(dayMatch[1]) * 24 * 60 * 60 * 1000;
+    if (hourMatch) totalMs += parseInt(hourMatch[1]) * 60 * 60 * 1000;
+    if (minMatch) totalMs += parseInt(minMatch[1]) * 60 * 1000;
+    if (secMatch) totalMs += parseInt(secMatch[1]) * 1000;
+    return totalMs;
+}
+
 // Format dates in browser's local timezone
 (function() {
+    const dateOpts = { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    };
     document.querySelectorAll('[data-date-display]').forEach(el => {
-        const eventCard = el.closest('.event-card');
-        const eventDate = new Date(eventCard.dataset.eventDate);
-        
-        // Format: "Feb 11, 2026, 3:45 PM"
-        const options = { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        };
-        el.textContent = eventDate.toLocaleString('en-US', options);
+        const card = el.closest('.event-card');
+        const startDate = new Date(card.dataset.eventStart);
+        let text = 'Start: ' + startDate.toLocaleString('en-US', dateOpts);
+        if (card.dataset.eventEnd) {
+            const endDate = new Date(card.dataset.eventEnd);
+            text += '\nEnd: ' + endDate.toLocaleString('en-US', dateOpts);
+        }
+        el.style.whiteSpace = 'pre-line';
+        el.textContent = text;
     });
 })();
 
@@ -138,9 +201,43 @@
     function updateTimers() {
         document.querySelectorAll('[data-timer]').forEach(el => {
             const eventCard = el.closest('.event-card');
-            const eventDate = new Date(eventCard.dataset.eventDate);
+            const minMs = parseTimeOffsetMs(eventCard.dataset.minTime || '');
             const now = new Date();
-            const diff = now - eventDate;
+
+            // If within min_time window, show countdown and hide action rows
+            const eventId = eventCard.dataset.eventId;
+            const startActions = document.getElementById('startActions' + eventId);
+            const endActions = document.getElementById('endActions' + eventId);
+            if (minMs && eventCard.dataset.eventEnd) {
+                const unlockTime = new Date(eventCard.dataset.eventEnd).getTime() + minMs;
+                const remaining = unlockTime - now.getTime();
+                if (remaining > 0) {
+                    if (startActions) startActions.style.display = 'none';
+                    if (endActions) endActions.style.display = 'none';
+                    const days = Math.floor(remaining / 86400000);
+                    const hours = Math.floor((remaining % 86400000) / 3600000);
+                    const mins = Math.floor((remaining % 3600000) / 60000);
+                    const secs = Math.floor((remaining % 60000) / 1000);
+                    if (days > 0) {
+                        el.textContent = 'Ready in ' + days + 'd ' + hours + 'h';
+                    } else if (hours > 0) {
+                        el.textContent = 'Ready in ' + hours + 'h ' + mins + 'm';
+                    } else if (mins > 0) {
+                        el.textContent = 'Ready in ' + mins + 'm ' + secs + 's';
+                    } else {
+                        el.textContent = 'Ready in ' + secs + 's';
+                    }
+                    return;
+                } else {
+                    if (startActions) startActions.style.display = '';
+                    if (endActions) endActions.style.display = '';
+                }
+            }
+
+            const refDate = eventCard.dataset.eventEnd
+                ? new Date(eventCard.dataset.eventEnd)
+                : new Date(eventCard.dataset.eventStart);
+            const diff = now - refDate;
             
             if (diff < 0) {
                 el.textContent = 'Future event';
@@ -171,36 +268,69 @@
     setInterval(updateTimers, 1000);
 })();
 
-function updateEventToNow(eventId) {
-    const timeInput = document.getElementById('updateInput' + eventId).value;
-    const calculatedDate = parseTimeOffset(timeInput);
-    
+function sendUpdate(eventId, action) {
+    const card = document.querySelector('[data-event-id="' + eventId + '"]');
+    const startInputVal = document.getElementById('startInput' + eventId).value.trim();
+    const endInput = document.getElementById('endInput' + eventId).value;
+    const endDate = endInput.trim() ? parseTimeOffset(endInput) : null;
+
+    // Determine start datetime
+    let startDate;
+    if (startInputVal) {
+        startDate = parseTimeOffset(startInputVal);
+    } else if (action === 'end' && card.dataset.eventEnd) {
+        // end action on event that already has an end_time: apply default_duration if set
+        const defaultDuration = parseInt(card.dataset.defaultDuration || '0', 10);
+        if (defaultDuration > 0) {
+            const endTime = endDate ? endDate : new Date();
+            startDate = new Date(endTime - defaultDuration * 60 * 1000);
+        } else {
+            startDate = new Date();
+        }
+    } else {
+        startDate = new Date();
+    }
+
+    const body = {
+        action: action,
+        datetime: startDate.toISOString(),
+    };
+    if (endDate) {
+        body.end_datetime = endDate.toISOString();
+    }
+
     fetch('/do_again/event/' + eventId + '/update/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            datetime: calculatedDate.toISOString()
-        })
+        body: JSON.stringify(body)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Clear all update input fields
-            document.querySelectorAll('[id^="updateInput"]').forEach(input => {
+            // Clear all input fields
+            document.querySelectorAll('[id^="startInput"], [id^="endInput"]').forEach(input => {
                 input.value = '';
             });
             location.reload();
         } else {
-            alert('Error updating event');
+            alert('Error updating event: ' + (data.error || ''));
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('Error updating event');
     });
+}
+
+function startEvent(eventId) {
+    sendUpdate(eventId, 'start');
+}
+
+function endEvent(eventId) {
+    sendUpdate(eventId, 'end');
 }
 
 function deleteEvent(eventId) {
@@ -267,12 +397,83 @@ function handleEventSubmit(event) {
     return false;
 }
 
+function openMinTimeModal(eventId, currentValue) {
+    document.getElementById('minTimeEventId').value = eventId;
+    document.getElementById('minTimeInput').value = currentValue || '';
+    document.getElementById('minTimeModal').classList.add('active');
+    document.getElementById('minTimeInput').focus();
+}
+
+function saveMinTime() {
+    const eventId = document.getElementById('minTimeEventId').value;
+    const minTime = document.getElementById('minTimeInput').value.trim();
+
+    fetch('/do_again/event/' + eventId + '/set-min-time/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ min_time_between_events: minTime })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const card = document.querySelector('[data-event-id="' + eventId + '"]');
+            if (card) card.dataset.minTime = minTime;
+            document.getElementById('minTimeModal').classList.remove('active');
+        } else {
+            alert('Error saving min time: ' + (data.error || ''));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving min time');
+    });
+}
+
 // Auto-focus on modal open
 document.getElementById('newEventModal').addEventListener('transitionend', function(e) {
     if (this.classList.contains('active')) {
         this.querySelector('input[name="title"]').focus();
     }
 });
+
+function openDurationModal(eventId, currentDuration) {
+    document.getElementById('durationEventId').value = eventId;
+    document.getElementById('durationInput').value = currentDuration || 0;
+    document.getElementById('durationModal').classList.add('active');
+    document.getElementById('durationInput').focus();
+}
+
+function saveDuration() {
+    const eventId = document.getElementById('durationEventId').value;
+    const duration = parseInt(document.getElementById('durationInput').value || '0', 10);
+
+    fetch('/do_again/event/' + eventId + '/set-duration/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ default_duration: duration })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the card's data attribute without a full reload
+            const card = document.querySelector('[data-event-id="' + eventId + '"]');
+            if (card) card.dataset.defaultDuration = duration;
+            document.getElementById('durationModal').classList.remove('active');
+        } else {
+            alert('Error saving duration: ' + (data.error || ''));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving duration');
+    });
+}
 </script>
 
 </body>
