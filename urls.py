@@ -7,6 +7,5 @@ urlpatterns = [
     path('create-event/', views.create_event, name='do_again_create_event'),
     path('event/<int:event_id>/update/', views.update_event, name='do_again_update_event'),
     path('event/<int:event_id>/delete/', views.delete_event, name='do_again_delete_event'),
-    path('event/<int:event_id>/set-duration/', views.set_default_duration, name='do_again_set_default_duration'),
-    path('event/<int:event_id>/set-min-time/', views.set_min_time, name='do_again_set_min_time'),
+    path('event/<int:event_id>/settings/', views.update_event_settings, name='do_again_update_event_settings'),
 ]

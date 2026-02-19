@@ -48,10 +48,8 @@
         .event-card .event-actions input[type="text"] { flex: 1; min-width: 100px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: .8rem; }
         .event-card .delete-icon { position: absolute; top: 12px; right: 12px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
         .event-card .delete-icon:hover { opacity: 1; }
-        .event-card .duration-icon { position: absolute; top: 12px; right: 38px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
-        .event-card .duration-icon:hover { opacity: 1; }
-        .event-card .min-time-icon { position: absolute; top: 12px; right: 64px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
-        .event-card .min-time-icon:hover { opacity: 1; }
+        .event-card .settings-icon { position: absolute; top: 12px; right: 38px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
+        .event-card .settings-icon:hover { opacity: 1; }
         .events-empty { text-align: center; color: #999; padding: 60px 20px; font-size: 1.1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
     </style>
 </head>
@@ -76,20 +74,19 @@
     <div class="events-grid" id="eventsList">
         {% if events %}
         {% for event in events %}
-        <div class="event-card" data-event-id="{{ event.id }}" data-event-start="{{ event.start_time.isoformat }}" data-event-end="{% if event.end_time %}{{ event.end_time.isoformat }}{% endif %}" data-default-duration="{{ event.default_duration }}" data-min-time="{{ event.min_time_between_events }}">
-            <span class="delete-icon" onclick="deleteEvent({{ event.id }})" title="Delete event">🗑️</span>
-            <span class="duration-icon" onclick="openDurationModal({{ event.id }}, {{ event.default_duration }})" title="Set default duration">🕐</span>
-            <span class="min-time-icon" onclick="openMinTimeModal({{ event.id }}, '{{ event.min_time_between_events }}')" title="Set min time between events">🚫</span>
+        <div class="event-card" data-event-id="{{ event.id }}" data-event-start="{{ event.start_time.isoformat }}" data-event-end="{% if event.end_time %}{{ event.end_time.isoformat }}{% endif %}" data-default-duration="{{ event.default_duration }}" data-min-duration="{{ event.min_duration }}" data-max-duration="{{ event.max_duration }}" data-min-time="{{ event.min_time_between_events }}" data-max-time="{{ event.max_time_between_events }}">
+            <span class="delete-icon" data-action="delete" title="Delete event">🗑️</span>
+            <span class="settings-icon" data-action="settings" title="Event settings">⚙️</span>
             <div class="event-title">{{ event.title }}</div>
             <div class="event-date" data-date-display="{{ event.id }}"></div>
             <div class="event-timer" data-timer="{{ event.id }}"></div>
             <div class="event-actions" id="startActions{{ event.id }}">
                 <input type="text" placeholder="start e.g. 1h30m" id="startInput{{ event.id }}"{% if not event.end_time %} style="display:none"{% endif %}>
-                <button class="btn btn-success btn-sm" onclick="startEvent({{ event.id }})"{% if not event.end_time %} style="display:none"{% endif %}>Start</button>
+                <button class="btn btn-success btn-sm" data-action="start" title="Start"{% if not event.end_time %} style="display:none"{% endif %}>Start</button>
             </div>
             <div class="event-actions" id="endActions{{ event.id }}" style="margin-top: 6px;">
                 <input type="text" placeholder="end e.g. 1h30m" id="endInput{{ event.id }}">
-                <button class="btn btn-primary btn-sm" onclick="endEvent({{ event.id }})">End</button>
+                <button class="btn btn-primary btn-sm" data-action="end" title="End">End</button>
             </div>
         </div>
         {% endfor %}
@@ -99,36 +96,39 @@
     </div>
 </div>
 
-<!-- Duration Modal -->
-<div class="modal-overlay" id="durationModal" onclick="if(event.target===this)this.classList.remove('active')">
+<!-- Event Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)this.classList.remove('active')">
     <div class="modal">
-        <h2>Default Duration</h2>
-        <input type="hidden" id="durationEventId">
+        <h2>Event Settings — <span id="settingsEventTitle" style="font-weight: normal; color: #555;"></span></h2>
+        <input type="hidden" id="settingsEventId">
         <div class="form-group">
-            <label>Duration (minutes)</label>
-            <input type="number" id="durationInput" min="0" placeholder="e.g. 60">
-            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Used to auto-fill start time when clicking End and the start input is blank. Set to 0 to disable.</small>
+            <label>Default Duration (minutes)</label>
+            <input type="number" id="settingsDefaultDuration" min="0" placeholder="e.g. 60">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Auto-fill start time when clicking End and the start input is blank. 0 = disabled.</small>
+        </div>
+        <div class="form-group">
+            <label>Min Duration (e.g. 1h30m)</label>
+            <input type="text" id="settingsMinDuration" placeholder="e.g. 30m">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Countdown shown while event is active, until this duration has elapsed since start.</small>
+        </div>
+        <div class="form-group">
+            <label>Max Duration (e.g. 2h)</label>
+            <input type="text" id="settingsMaxDuration" placeholder="e.g. 2h">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">After min duration, counts down to this. Can go negative to show overtime.</small>
+        </div>
+        <div class="form-group">
+            <label>Min Time Between Events (e.g. 1d5h)</label>
+            <input type="text" id="settingsMinTime" placeholder="e.g. 1d5h">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">After ending, hides controls until this much time has passed. Countdown shown.</small>
+        </div>
+        <div class="form-group">
+            <label>Max Time Between Events (e.g. 2d)</label>
+            <input type="text" id="settingsMaxTime" placeholder="e.g. 2d">
+            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">After min cooldown, counts down to this. Can go negative to show overdue.</small>
         </div>
         <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('durationModal').classList.remove('active')">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="saveDuration()">Save</button>
-        </div>
-    </div>
-</div>
-
-<!-- Min Time Between Events Modal -->
-<div class="modal-overlay" id="minTimeModal" onclick="if(event.target===this)this.classList.remove('active')">
-    <div class="modal">
-        <h2>Min Time Between Events</h2>
-        <input type="hidden" id="minTimeEventId">
-        <div class="form-group">
-            <label>Minimum time (e.g. 1d5h, 2h, 30m)</label>
-            <input type="text" id="minTimeInput" placeholder="e.g. 1d5h or leave blank to disable">
-            <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">If time since last end is less than this, the Start/End controls will be hidden. Leave blank to disable.</small>
-        </div>
-        <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('minTimeModal').classList.remove('active')">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="saveMinTime()">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('settingsModal').classList.remove('active')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings()">Save</button>
         </div>
     </div>
 </div>
@@ -198,70 +198,108 @@ function parseTimeOffsetMs(input) {
 
 // Event timer updates
 (function() {
-    function updateTimers() {
-        document.querySelectorAll('[data-timer]').forEach(el => {
-            const eventCard = el.closest('.event-card');
-            const minMs = parseTimeOffsetMs(eventCard.dataset.minTime || '');
-            const now = new Date();
+    function formatCountdown(ms, label) {
+        const abs = Math.abs(ms);
+        const sign = ms < 0 ? '-' : '';
+        const days = Math.floor(abs / 86400000);
+        const hours = Math.floor((abs % 86400000) / 3600000);
+        const mins = Math.floor((abs % 3600000) / 60000);
+        const secs = Math.floor((abs % 60000) / 1000);
+        let time;
+        if (days > 0) {
+            time = sign + days + 'd ' + hours + 'h';
+        } else if (hours > 0) {
+            time = sign + hours + 'h ' + mins + 'm';
+        } else if (mins > 0) {
+            time = sign + mins + 'm ' + secs + 's';
+        } else {
+            time = sign + secs + 's';
+        }
+        return label + ' ' + time;
+    }
 
-            // If within min_time window, show countdown and hide action rows
-            const eventId = eventCard.dataset.eventId;
+    function formatElapsed(ms) {
+        const days = Math.floor(ms / 86400000);
+        const hours = Math.floor((ms % 86400000) / 3600000);
+        const mins = Math.floor((ms % 3600000) / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        if (days > 365) {
+            const years = Math.floor(days / 365);
+            const remainingDays = days % 365;
+            return years + 'y ' + remainingDays + 'd ago';
+        } else if (days > 0) {
+            return days + 'd ' + hours + 'h ago';
+        } else if (hours > 0) {
+            return hours + 'h ' + mins + 'm ago';
+        } else if (mins > 0) {
+            return mins + 'm ' + secs + 's ago';
+        } else {
+            return secs + 's ago';
+        }
+    }
+
+    function updateTimers() {
+        const now = Date.now();
+        document.querySelectorAll('[data-timer]').forEach(el => {
+            const card = el.closest('.event-card');
+            const eventId = card.dataset.eventId;
             const startActions = document.getElementById('startActions' + eventId);
             const endActions = document.getElementById('endActions' + eventId);
-            if (minMs && eventCard.dataset.eventEnd) {
-                const unlockTime = new Date(eventCard.dataset.eventEnd).getTime() + minMs;
-                const remaining = unlockTime - now.getTime();
-                if (remaining > 0) {
-                    if (startActions) startActions.style.display = 'none';
-                    if (endActions) endActions.style.display = 'none';
-                    const days = Math.floor(remaining / 86400000);
-                    const hours = Math.floor((remaining % 86400000) / 3600000);
-                    const mins = Math.floor((remaining % 3600000) / 60000);
-                    const secs = Math.floor((remaining % 60000) / 1000);
-                    if (days > 0) {
-                        el.textContent = 'Ready in ' + days + 'd ' + hours + 'h';
-                    } else if (hours > 0) {
-                        el.textContent = 'Ready in ' + hours + 'h ' + mins + 'm';
-                    } else if (mins > 0) {
-                        el.textContent = 'Ready in ' + mins + 'm ' + secs + 's';
-                    } else {
-                        el.textContent = 'Ready in ' + secs + 's';
-                    }
-                    return;
-                } else {
-                    if (startActions) startActions.style.display = '';
-                    if (endActions) endActions.style.display = '';
-                }
-            }
+            const startMs = new Date(card.dataset.eventStart).getTime();
+            const hasEnd = !!card.dataset.eventEnd;
+            const endMs = hasEnd ? new Date(card.dataset.eventEnd).getTime() : 0;
+            const minDurMs = parseTimeOffsetMs(card.dataset.minDuration || '');
+            const maxDurMs = parseTimeOffsetMs(card.dataset.maxDuration || '');
+            const minTimeMs = parseTimeOffsetMs(card.dataset.minTime || '');
+            const maxTimeMs = parseTimeOffsetMs(card.dataset.maxTime || '');
 
-            const refDate = eventCard.dataset.eventEnd
-                ? new Date(eventCard.dataset.eventEnd)
-                : new Date(eventCard.dataset.eventStart);
-            const diff = now - refDate;
-            
-            if (diff < 0) {
-                el.textContent = 'Future event';
+            // --- Event is started (no end_time) ---
+            if (!hasEnd) {
+                // Show end actions, hide start actions (existing behavior for open events)
+                if (startActions) startActions.style.display = '';
+                if (endActions) endActions.style.display = '';
+                const elapsed = now - startMs;
+
+                if (minDurMs && elapsed < minDurMs) {
+                    // Phase 1: countdown to start_time + min_duration
+                    el.textContent = formatCountdown(minDurMs - elapsed, 'Min in');
+                    return;
+                }
+                if (maxDurMs) {
+                    // Phase 2: countdown to start_time + max_duration (can go negative)
+                    const remaining = (startMs + maxDurMs) - now;
+                    el.textContent = formatCountdown(remaining, 'Max in');
+                    return;
+                }
+                // Fallback: count up from start_time
+                el.textContent = elapsed >= 0 ? formatElapsed(elapsed) : 'Future event';
                 return;
             }
-            
-            const days = Math.floor(diff / 86400000);
-            const hours = Math.floor((diff % 86400000) / 3600000);
-            const mins = Math.floor((diff % 3600000) / 60000);
-            const secs = Math.floor((diff % 60000) / 1000);
-            
-            if (days > 365) {
-                const years = Math.floor(days / 365);
-                const remainingDays = days % 365;
-                el.textContent = years + 'y ' + remainingDays + 'd ago';
-            } else if (days > 0) {
-                el.textContent = days + 'd ' + hours + 'h ago';
-            } else if (hours > 0) {
-                el.textContent = hours + 'h ' + mins + 'm ago';
-            } else if (mins > 0) {
-                el.textContent = mins + 'm ' + secs + 's ago';
-            } else {
-                el.textContent = secs + 's ago';
+
+            // --- Event is ended (has end_time) ---
+            const sincEnd = now - endMs;
+
+            if (minTimeMs && sincEnd < minTimeMs) {
+                // Phase 1: countdown to end_time + min_time, hide controls
+                if (startActions) startActions.style.display = 'none';
+                if (endActions) endActions.style.display = 'none';
+                el.textContent = formatCountdown(minTimeMs - sincEnd, 'Ready in');
+                return;
             }
+
+            // Past min cooldown: show controls
+            if (startActions) startActions.style.display = '';
+            if (endActions) endActions.style.display = '';
+
+            if (maxTimeMs) {
+                // Phase 2: countdown to end_time + max_time (can go negative)
+                const remaining = (endMs + maxTimeMs) - now;
+                el.textContent = formatCountdown(remaining, 'Due in');
+                return;
+            }
+
+            // Fallback: count up from end_time
+            el.textContent = sincEnd >= 0 ? formatElapsed(sincEnd) : 'Future event';
         });
     }
     updateTimers();
@@ -324,6 +362,18 @@ function sendUpdate(eventId, action) {
         alert('Error updating event');
     });
 }
+
+// Attach card action handlers via event delegation (avoids Django template tags in onclick)
+document.getElementById('eventsList').addEventListener('click', function(e) {
+    const card = e.target.closest('.event-card');
+    if (!card) return;
+    const eventId = card.dataset.eventId;
+    const action = e.target.dataset.action;
+    if (action === 'delete') deleteEvent(eventId);
+    else if (action === 'settings') openSettingsModal(eventId);
+    else if (action === 'start') startEvent(eventId);
+    else if (action === 'end') endEvent(eventId);
+});
 
 function startEvent(eventId) {
     sendUpdate(eventId, 'start');
@@ -397,38 +447,56 @@ function handleEventSubmit(event) {
     return false;
 }
 
-function openMinTimeModal(eventId, currentValue) {
-    document.getElementById('minTimeEventId').value = eventId;
-    document.getElementById('minTimeInput').value = currentValue || '';
-    document.getElementById('minTimeModal').classList.add('active');
-    document.getElementById('minTimeInput').focus();
+function openSettingsModal(eventId) {
+    const card = document.querySelector('[data-event-id="' + eventId + '"]');
+    document.getElementById('settingsEventId').value = eventId;
+    document.getElementById('settingsEventTitle').textContent = card.querySelector('.event-title').textContent.trim();
+    document.getElementById('settingsDefaultDuration').value = card.dataset.defaultDuration || 0;
+    document.getElementById('settingsMinDuration').value = card.dataset.minDuration || '';
+    document.getElementById('settingsMaxDuration').value = card.dataset.maxDuration || '';
+    document.getElementById('settingsMinTime').value = card.dataset.minTime || '';
+    document.getElementById('settingsMaxTime').value = card.dataset.maxTime || '';
+    document.getElementById('settingsModal').classList.add('active');
+    document.getElementById('settingsDefaultDuration').focus();
 }
 
-function saveMinTime() {
-    const eventId = document.getElementById('minTimeEventId').value;
-    const minTime = document.getElementById('minTimeInput').value.trim();
+function saveSettings() {
+    const eventId = document.getElementById('settingsEventId').value;
+    const payload = {
+        default_duration: parseInt(document.getElementById('settingsDefaultDuration').value || '0', 10),
+        min_duration: document.getElementById('settingsMinDuration').value.trim(),
+        max_duration: document.getElementById('settingsMaxDuration').value.trim(),
+        min_time_between_events: document.getElementById('settingsMinTime').value.trim(),
+        max_time_between_events: document.getElementById('settingsMaxTime').value.trim(),
+    };
 
-    fetch('/do_again/event/' + eventId + '/set-min-time/', {
+    fetch('/do_again/event/' + eventId + '/settings/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ min_time_between_events: minTime })
+        body: JSON.stringify(payload)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             const card = document.querySelector('[data-event-id="' + eventId + '"]');
-            if (card) card.dataset.minTime = minTime;
-            document.getElementById('minTimeModal').classList.remove('active');
+            if (card) {
+                card.dataset.defaultDuration = payload.default_duration;
+                card.dataset.minDuration = payload.min_duration;
+                card.dataset.maxDuration = payload.max_duration;
+                card.dataset.minTime = payload.min_time_between_events;
+                card.dataset.maxTime = payload.max_time_between_events;
+            }
+            document.getElementById('settingsModal').classList.remove('active');
         } else {
-            alert('Error saving min time: ' + (data.error || ''));
+            alert('Error saving settings: ' + (data.error || ''));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error saving min time');
+        alert('Error saving settings');
     });
 }
 
@@ -439,41 +507,6 @@ document.getElementById('newEventModal').addEventListener('transitionend', funct
     }
 });
 
-function openDurationModal(eventId, currentDuration) {
-    document.getElementById('durationEventId').value = eventId;
-    document.getElementById('durationInput').value = currentDuration || 0;
-    document.getElementById('durationModal').classList.add('active');
-    document.getElementById('durationInput').focus();
-}
-
-function saveDuration() {
-    const eventId = document.getElementById('durationEventId').value;
-    const duration = parseInt(document.getElementById('durationInput').value || '0', 10);
-
-    fetch('/do_again/event/' + eventId + '/set-duration/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ default_duration: duration })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update the card's data attribute without a full reload
-            const card = document.querySelector('[data-event-id="' + eventId + '"]');
-            if (card) card.dataset.defaultDuration = duration;
-            document.getElementById('durationModal').classList.remove('active');
-        } else {
-            alert('Error saving duration: ' + (data.error || ''));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error saving duration');
-    });
-}
 </script>
 
 </body>

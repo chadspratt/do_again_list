@@ -12,7 +12,10 @@ class PastEvents(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     ordering = models.IntegerField(default=0)
     default_duration = models.IntegerField(default=0)
+    min_duration = models.CharField(max_length=50, blank=True, default='')
+    max_duration = models.CharField(max_length=50, blank=True, default='')
     min_time_between_events = models.CharField(max_length=50, blank=True, default='')
+    max_time_between_events = models.CharField(max_length=50, blank=True, default='')
 
     def __str__(self):
         return f"{self.title} on {self.end_time}"

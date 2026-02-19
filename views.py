@@ -93,26 +93,29 @@ def delete_event(request, event_id):
 
 
 @require_POST
-def set_default_duration(request, event_id):
-    """Update the default_duration (minutes) for an event."""
+def update_event_settings(request, event_id):
+    """Update timing settings for an event."""
     try:
         data = json.loads(request.body)
         event = get_object_or_404(PastEvents, id=event_id)
-        event.default_duration = int(data.get('default_duration', 0))
-        event.save(update_fields=['default_duration'])
-        return JsonResponse({'success': True})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
-
-
-@require_POST
-def set_min_time(request, event_id):
-    """Update the min_time_between_events for an event."""
-    try:
-        data = json.loads(request.body)
-        event = get_object_or_404(PastEvents, id=event_id)
-        event.min_time_between_events = data.get('min_time_between_events', '').strip()
-        event.save(update_fields=['min_time_between_events'])
+        fields = []
+        if 'default_duration' in data:
+            event.default_duration = int(data['default_duration'])
+            fields.append('default_duration')
+        if 'min_duration' in data:
+            event.min_duration = data['min_duration'].strip()
+            fields.append('min_duration')
+        if 'max_duration' in data:
+            event.max_duration = data['max_duration'].strip()
+            fields.append('max_duration')
+        if 'min_time_between_events' in data:
+            event.min_time_between_events = data['min_time_between_events'].strip()
+            fields.append('min_time_between_events')
+        if 'max_time_between_events' in data:
+            event.max_time_between_events = data['max_time_between_events'].strip()
+            fields.append('max_time_between_events')
+        if fields:
+            event.save(update_fields=fields)
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
