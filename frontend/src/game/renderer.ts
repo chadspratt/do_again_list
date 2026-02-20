@@ -32,11 +32,6 @@ export function renderFrame(ctx: CanvasRenderingContext2D, state: BattleState) {
     ctx.stroke();
   }
 
-  // Distance marker
-  ctx.fillStyle = '#333';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText(`${Math.floor(state.distance)}m`, CANVAS_W - 70, 18);
-
   // Draw enemies
   for (const enemy of state.enemies) {
     drawEnemy(ctx, enemy, state.distance);

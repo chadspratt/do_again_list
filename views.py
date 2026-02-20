@@ -28,7 +28,6 @@ def _game_state_dict(state):
         'total_defense': state.total_defense(),
         'total_speed': state.total_speed(),
         'xp_to_next_level': state.xp_to_next_level(),
-        'best_distance': state.best_distance,
         'streak': state.streak,
         'items': state.items,
     }
@@ -80,7 +79,6 @@ def api_create_event(request):
         # Game reward: +1 base attack for creating an event type
         state = _get_game_state()
         state.base_attack += 1
-        state.add_xp(25)
         state.save()
 
         return JsonResponse({'success': True, 'id': event.id, 'game': _game_state_dict(state)})
@@ -130,70 +128,112 @@ def api_update_event(request, event_id):
         hero_buffs = []
 
         from .utils import parse_time_offset_ms
-        xp_to_award = 15
         gold_to_award = 5
 
-        # Check time_between_events adherence and compute enemy level
-        if ms_since_last_event != 0:
-            min_interval_ms = parse_time_offset_ms(event.min_time_between_events)
-            max_interval_ms = parse_time_offset_ms(event.max_time_between_events)
-            min_is_good = min_interval_ms == 0 or ms_since_last_event >= min_interval_ms
-            max_is_good = max_interval_ms == 0 or ms_since_last_event <= max_interval_ms
-            if max_is_good:
-                state.streak += 1
-                game_messages.append(f'On schedule! Streak: {state.streak}')
-            else:
-                state.streak = 0
-                game_messages.append('Off schedule — streak reset, enemies get tougher!')
+        # Classify event: good / bad / neutral
+        min_interval_ms = parse_time_offset_ms(event.min_time_between_events)
+        max_interval_ms = parse_time_offset_ms(event.max_time_between_events)
+        has_min = min_interval_ms > 0
+        has_max = max_interval_ms > 0
 
-            # Buffs based on time_between_events
-            if min_is_good and max_is_good:
-                hero_buffs.append({'stat': 'defense', 'amount': 2, 'label': 'On Schedule'})
-                hero_buffs.append({'stat': 'speed', 'amount': 1, 'label': 'On Schedule'})
-                game_messages.append('Buff: +2 defense, +1 speed (On Schedule)')
-            elif max_is_good:
-                hero_buffs.append({'stat': 'defense', 'amount': 1, 'label': 'Within Max'})
-                game_messages.append('Buff: +1 defense (Within Max Time)')
+        if has_max and not has_min:
+            event_kind = 'good'
+        elif has_min and not has_max:
+            event_kind = 'bad'
+        else:
+            event_kind = 'neutral'
+
+        # Timing compliance (only meaningful when we have a previous end_time)
+        min_ok = not has_min or ms_since_last_event >= min_interval_ms
+        max_ok = not has_max or ms_since_last_event <= max_interval_ms
+        # First-ever occurrence counts as compliant
+        if ms_since_last_event == 0:
+            min_ok = True
+            max_ok = True
 
         if action == 'start':
-            xp_to_award += 10
+            pass  # no reward on start
         elif action == 'end':
-            # Compute enemy level from ms_since_last_event
-            # Base level 1, +1 per hour since last event, capped at level scaling
-            if ms_since_last_event > 0:
-                hours_since = ms_since_last_event / 3_600_000
-                enemy_level = max(1, min(50, int(1 + hours_since)))
-            else:
-                enemy_level = 1
-            spawn_enemy = {'level': enemy_level}
+            # Enemy level based on current kill streak sent by client
+            kill_streak = int(data.get('kill_streak', 0))
+            enemy_level = (kill_streak // 3) + 1
 
-            # Duration-based rewards and buffs
-            duration_ms = (event.end_time - event.start_time).total_seconds() * 1000
-            min_dur_ms = parse_time_offset_ms(event.min_duration)
-            max_dur_ms = parse_time_offset_ms(event.max_duration)
+            # ── Compute stat delta based on event kind + timing ──
+            delta = {'attack': 0, 'defense': 0, 'speed': 0}
 
-            max_is_good = max_dur_ms == 0 or duration_ms <= max_dur_ms
-            min_is_good = min_dur_ms == 0 or duration_ms >= min_dur_ms
-            if min_is_good:
-                game_messages.append('Went the distance! +10 gold, +5 XP')
-                xp_to_award += 5
-                gold_to_award += 10
-                hero_buffs.append({'stat': 'attack', 'amount': 2, 'label': 'Went Distance'})
-            if max_is_good:
-                game_messages.append('Stopped on time! +10 gold, +5 XP')
-                xp_to_award += 5
-                gold_to_award += 10
-                hero_buffs.append({'stat': 'attack', 'amount': 1, 'label': 'On Time'})
-                if min_is_good:
-                    game_messages.append('Perfect timing! Bonus +5 gold, +5 XP, heal!')
-                    xp_to_award += 5
+            if event_kind == 'good':
+                if max_ok:
+                    # On time: full reward
+                    delta = {'attack': 3, 'defense': 2, 'speed': 1}
+                    gold_to_award += 15
+                    state.streak += 1
+                    game_messages.append(f'Good habit on time! Streak: {state.streak}')
+                else:
+                    # Late: smaller reward
+                    delta = {'attack': 1, 'defense': 1, 'speed': 0}
                     gold_to_award += 5
-                    hero_buffs.append({'stat': 'defense', 'amount': 2, 'label': 'Perfect'})
-            elif not max_is_good:
-                # Overtime: fatigue instead of buffs
-                game_messages.append('Overtime — hero takes fatigue damage!')
+                    state.streak = 0
+                    game_messages.append('Good habit but late — reduced reward.')
 
-        msgs = state.add_xp(xp_to_award)
+            elif event_kind == 'bad':
+                if not min_ok:
+                    # Too soon: larger penalty
+                    delta = {'attack': -3, 'defense': -2, 'speed': -1}
+                    gold_to_award = 0
+                    state.streak = 0
+                    game_messages.append('Bad habit too soon! Large penalty.')
+                else:
+                    # Waited long enough: smaller penalty
+                    delta = {'attack': -1, 'defense': -1, 'speed': 0}
+                    gold_to_award += 5
+                    game_messages.append('Bad habit, but you held off — minor penalty.')
+
+            else:  # neutral
+                if min_ok and max_ok:
+                    # Fully compliant
+                    delta = {'attack': 2, 'defense': 1, 'speed': 1}
+                    gold_to_award += 10
+                    state.streak += 1
+                    game_messages.append(f'Neutral event on schedule! Streak: {state.streak}')
+                else:
+                    # Violated a bound
+                    delta = {'attack': 1, 'defense': 0, 'speed': 0}
+                    gold_to_award += 3
+                    state.streak = 0
+                    game_messages.append('Neutral event but timing was off — reduced reward.')
+
+            # Hero buffs (positive deltas) and debuffs (negative deltas)
+            buff_parts = []
+            for stat, amount in delta.items():
+                if amount != 0:
+                    label = (
+                        f"{event_kind.title()}"
+                        f"{' (on time)' if event_kind == 'good' and max_ok else ''}"
+                        f"{' (held off)' if event_kind == 'bad' and min_ok else ''}"
+                    )
+                    hero_buffs.append({'stat': stat, 'amount': amount, 'label': label})
+                    
+                    if amount > 0:
+                        buff_parts.append(f'+{amount} {stat}')
+                    elif amount < 0:
+                        buff_parts.append(f'{amount} {stat}')
+
+            # Enemy stat modifier is the opposite of hero delta
+            enemy_stat_mod = {
+                'attack': -delta['attack'],
+                'defense': -delta['defense'],
+                'speed': -delta['speed'],
+            }
+            spawn_enemy = {
+                'level': enemy_level,
+                'stat_modifier': enemy_stat_mod,
+            }
+
+            # Describe what happened
+            if buff_parts:
+                game_messages.append('Hero: ' + ', '.join(buff_parts))
+
+        msgs = []
         state.gold += gold_to_award
         game_messages.extend(msgs)
 
@@ -205,14 +245,8 @@ def api_update_event(request, event_id):
             'game_messages': game_messages,
             'spawn_enemy': spawn_enemy,
             'hero_buffs': hero_buffs,
-            'pending_heal': action == 'end' and spawn_enemy is not None
-                and parse_time_offset_ms(event.min_duration) > 0
-                and parse_time_offset_ms(event.max_duration) > 0
-                and (event.end_time - event.start_time).total_seconds() * 1000 >= parse_time_offset_ms(event.min_duration)
-                and (event.end_time - event.start_time).total_seconds() * 1000 <= parse_time_offset_ms(event.max_duration),
-            'pending_fatigue': action == 'end' and spawn_enemy is not None
-                and parse_time_offset_ms(event.max_duration) > 0
-                and (event.end_time - event.start_time).total_seconds() * 1000 > parse_time_offset_ms(event.max_duration),
+            'pending_heal': action == 'end' and event_kind == 'good' and max_ok,
+            'pending_fatigue': action == 'end' and event_kind == 'bad' and not min_ok,
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
@@ -254,9 +288,8 @@ def api_update_event_settings(request, event_id):
         if fields:
             event.save(update_fields=fields)
 
-        # Game reward: +10 XP for configuring settings
+        # No XP reward for configuring settings
         state = _get_game_state()
-        state.add_xp(10)
         state.save()
 
         return JsonResponse({'success': True, 'game': _game_state_dict(state)})

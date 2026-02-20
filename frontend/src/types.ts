@@ -29,7 +29,6 @@ export interface GameState {
   total_defense: number;
   total_speed: number;
   xp_to_next_level: number;
-  best_distance: number;
   streak: number;
   items: string[];
 }

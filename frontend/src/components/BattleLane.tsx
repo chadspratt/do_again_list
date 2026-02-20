@@ -1,14 +1,14 @@
-import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import type { GameState } from '../types';
 import { createBattleState, tick, spawnEnemyFromEvent, applyBuff, type BattleState } from '../game/engine';
 import { renderFrame } from '../game/renderer';
-import { reportDistance } from '../api';
 
 export interface BattleLaneHandle {
-  spawnEnemy: (level: number) => void;
+  spawnEnemy: (level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) => void;
   applyBuff: (stat: 'attack' | 'defense' | 'speed', amount: number, label: string) => void;
   healHero: () => void;
   fatigueHero: () => void;
+  getKillStreak: () => number;
 }
 
 interface BattleLaneProps {
@@ -25,6 +25,7 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
   const accGold = useRef(0);
   const accXp = useRef(0);
   const reportTimer = useRef(0);
+  const [killStreak, setKillStreak] = useState(0);
 
   // Keep gameState ref current
   gameStateRef.current = gameState;
@@ -53,9 +54,9 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
 
   // Expose imperative methods to parent
   useImperativeHandle(ref, () => ({
-    spawnEnemy(level: number) {
+    spawnEnemy(level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) {
       const battle = battleRef.current;
-      if (battle) spawnEnemyFromEvent(battle, level);
+      if (battle) spawnEnemyFromEvent(battle, level, statModifier);
     },
     applyBuff(stat: 'attack' | 'defense' | 'speed', amount: number, label: string) {
       const battle = battleRef.current;
@@ -82,8 +83,9 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
           text: `Fatigue -${dmg}`, color: '#f97316', life: 1.2, maxLife: 1.2,
         });
       }
-    },
-  }), []);
+    },    getKillStreak() {
+      return battleRef.current?.killStreak ?? 0;
+    },  }), []);
 
   // Animation loop
   const gameLoop = useCallback((timestamp: number) => {
@@ -106,6 +108,9 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
       accXp.current += result.xpEarned;
     }
 
+    // Sync kill streak display
+    setKillStreak(result.killStreak);
+
     // Report gold/xp to parent every 2 seconds
     reportTimer.current += dt;
     if (reportTimer.current >= 2 && (accGold.current > 0 || accXp.current > 0)) {
@@ -113,11 +118,6 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
       accGold.current = 0;
       accXp.current = 0;
       reportTimer.current = 0;
-    }
-
-    // Report distance on hero death
-    if (result.heroDied) {
-      reportDistance(Math.floor(result.distance)).catch(() => {});
     }
 
     renderFrame(ctx, battle);
@@ -145,8 +145,7 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
         <span className="stat">⚡ {gameState.total_speed}</span>
         <span className="stat">⭐ Lv {gameState.level}</span>
         <span className="stat">💰 {gameState.gold}</span>
-        <span className="stat">🏆 {gameState.best_distance}m</span>
-        <span className="stat">🔥 Streak: {gameState.streak}</span>
+        <span className="stat">🔥 Streak: {killStreak}</span>
       </div>
       <div className="xp-bar-container">
         <div className="xp-bar-fill" style={{ width: `${(gameState.xp / gameState.xp_to_next_level) * 100}%` }} />

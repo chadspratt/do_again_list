@@ -57,6 +57,7 @@ export interface BattleState {
   enemyIdCounter: number;
   pendingHeal: boolean;
   pendingFatigue: boolean;
+  killStreak: number;
 }
 
 // ── Constants ──
@@ -69,7 +70,7 @@ const ENEMY_BASE_ATK = 4;
 const HERO_BASE_HP = 100;
 const FLOAT_TEXT_DURATION = 1.2;
 const DEATH_FADE_DURATION = 0.5;
-const BUFF_DURATION = 60;  // seconds
+const BUFF_DURATION = -1;  // seconds, -1 for until death
 
 // ── Initialization ──
 
@@ -84,6 +85,7 @@ export function createBattleState(gameState: GameState): BattleState {
     enemyIdCounter: 0,
     pendingHeal: false,
     pendingFatigue: false,
+    killStreak: 0,
   };
 }
 
@@ -106,20 +108,36 @@ function createHero(gs: GameState): Hero {
   };
 }
 
+export interface EnemyStatModifier {
+  attack?: number;
+  defense?: number;
+  speed?: number;
+}
+
 /**
- * Spawn an enemy at a specific level. Called when an event is ended.
+ * Spawn an enemy at a specific level with optional stat modifiers.
+ * Positive modifiers strengthen the enemy; negative weaken it.
  */
-export function spawnEnemyFromEvent(state: BattleState, level: number): void {
+export function spawnEnemyFromEvent(
+  state: BattleState,
+  level: number,
+  statModifier?: EnemyStatModifier,
+): void {
   state.enemyIdCounter++;
+  const mod = statModifier ?? {};
+  const baseAtk = ENEMY_BASE_ATK + level * 2 + (mod.attack ?? 0);
+  const baseDef = Math.floor(level / 2) + (mod.defense ?? 0);
+  const baseSpd = 20 + level * 2 + (mod.speed ?? 0);
+  const baseHp = ENEMY_BASE_HP + level * 8;
   const enemy: Enemy = {
     id: state.enemyIdCounter,
     x: 600 + Math.random() * 100,
     y: GROUND_Y,
-    hp: ENEMY_BASE_HP + level * 8,
-    maxHp: ENEMY_BASE_HP + level * 8,
-    attack: ENEMY_BASE_ATK + level * 2,
-    defense: Math.floor(level / 2),
-    speed: 20 + level * 2,
+    hp: baseHp,
+    maxHp: baseHp,
+    attack: Math.max(1, baseAtk),
+    defense: Math.max(0, baseDef),
+    speed: Math.max(5, baseSpd),
     attackCooldown: 1.5,
     attackTimer: 0,
     width: 26,
@@ -132,16 +150,22 @@ export function spawnEnemyFromEvent(state: BattleState, level: number): void {
     deathTimer: 0,
   };
   state.enemies.push(enemy);
-  addFloatingText(state, 500, 140, `Enemy Lv${level}!`, '#ef4444');
+  // Color: red for strengthened, yellow for weakened, default for neutral
+  const totalMod = (mod.attack ?? 0) + (mod.defense ?? 0) + (mod.speed ?? 0);
+  const color = totalMod > 0 ? '#ef4444' : totalMod < 0 ? '#facc15' : '#f97316';
+  const label = totalMod > 0 ? 'Strengthened' : totalMod < 0 ? 'Weakened' : '';
+  addFloatingText(state, 500, 140, `Enemy Lv${level}${label ? ' ' + label : ''}!`, color);
 }
 
 /**
- * Apply a temporary hero buff. Called based on event timing conditions.
+ * Apply a temporary hero buff or debuff that is lost on death. Positive = buff, negative = debuff.
  */
 export function applyBuff(state: BattleState, stat: 'attack' | 'defense' | 'speed', amount: number, label: string): void {
   state.buffs.push({ stat, amount, remaining: BUFF_DURATION, label });
   const emoji = stat === 'attack' ? '🗡️' : stat === 'defense' ? '🛡️' : '⚡';
-  addFloatingText(state, state.hero.x, state.hero.y - 40, `${emoji}+${amount} ${label}`, '#a855f7');
+  const sign = amount > 0 ? '+' : '';
+  const color = amount > 0 ? '#a855f7' : '#ef4444';
+  addFloatingText(state, state.hero.x, state.hero.y - 40, `${emoji}${sign}${amount} ${label}`, color);
 }
 
 function addFloatingText(state: BattleState, x: number, y: number, text: string, color: string) {
@@ -162,10 +186,11 @@ export interface TickResult {
   xpEarned: number;
   heroDied: boolean;
   distance: number;
+  killStreak: number;
 }
 
 export function tick(state: BattleState, gs: GameState, dt: number): TickResult {
-  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, distance: state.distance };
+  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, distance: state.distance, killStreak: state.killStreak };
   const hero = state.hero;
 
   // Update floating texts
@@ -177,6 +202,7 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
 
   // Update buffs — decrement timers, remove expired
   state.buffs = state.buffs.filter(b => {
+    if (b.remaining == -1) return true;  // Permanent until death
     b.remaining -= dt;
     return b.remaining > 0;
   });
@@ -215,7 +241,6 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       Object.assign(hero, newHero);
       state.distance = 0;
       state.enemies = [];
-      // Keep buffs across respawn
     }
     state.enemies = state.enemies.filter(e => !e.dead || e.deathTimer > 0);
     state.enemies.forEach(e => { if (e.dead) e.deathTimer -= dt; });
@@ -262,7 +287,12 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       closestEnemy.deathTimer = DEATH_FADE_DURATION;
       result.goldEarned += closestEnemy.goldReward;
       result.xpEarned += closestEnemy.xpReward;
+      state.killStreak++;
+      result.killStreak = state.killStreak;
       addFloatingText(state, closestEnemy.x, closestEnemy.y - 40, `+${closestEnemy.goldReward}g`, '#eab308');
+      if (state.killStreak > 1) {
+        addFloatingText(state, closestEnemy.x, closestEnemy.y - 60, `${state.killStreak}x streak!`, '#f59e0b');
+      }
     }
   }
 
@@ -281,6 +311,9 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
         hero.alive = false;
         hero.respawnTimer = RESPAWN_TIME;
         result.heroDied = true;
+        state.buffs = [];       // Remove all buffs on death
+        state.killStreak = 0;   // Reset streak on death
+        result.killStreak = 0;
         break;
       }
     }

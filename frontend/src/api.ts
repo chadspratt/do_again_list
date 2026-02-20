@@ -12,7 +12,7 @@ interface ApiResponse {
   error?: string;
   game?: import('./types').GameState;
   game_messages?: string[];
-  spawn_enemy?: { level: number } | null;
+  spawn_enemy?: { level: number; stat_modifier?: { attack?: number; defense?: number; speed?: number } } | null;
   hero_buffs?: { stat: 'attack' | 'defense' | 'speed'; amount: number; label: string }[];
   pending_heal?: boolean;
   pending_fatigue?: boolean;
@@ -44,9 +44,11 @@ export async function updateEvent(
   action: string,
   datetime: string,
   endDatetime?: string,
+  killStreak?: number,
 ): Promise<ApiResponse> {
-  const body: Record<string, string> = { action, datetime };
+  const body: Record<string, string | number> = { action, datetime };
   if (endDatetime) body.end_datetime = endDatetime;
+  if (killStreak !== undefined) body.kill_streak = killStreak;
   return apiPost(`${API_BASE}/events/${eventId}/update/`, body);
 }
 
@@ -64,8 +66,4 @@ export async function updateEventSettings(
 export async function fetchGameState(): Promise<GameState> {
   const res = await fetch(`${API_BASE}/game/`);
   return res.json();
-}
-
-export async function reportDistance(distance: number): Promise<ApiResponse & { new_record?: boolean; best_distance?: number }> {
-  return apiPost(`${API_BASE}/game/distance/`, { distance });
 }
