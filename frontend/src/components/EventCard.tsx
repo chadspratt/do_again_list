@@ -26,6 +26,10 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: Ev
   const isRunning = event.end_time === null;
   const inCooldown = isInCooldown(now, event.end_time, event.min_time_between_events);
 
+  const hasMin = event.min_time_between_events.trim() !== '';
+  const hasMax = event.max_time_between_events.trim() !== '';
+  const cardKind = hasMax && !hasMin ? 'event-good' : hasMin && !hasMax ? 'event-bad' : '';
+
   const timerText = computeTimerText(
     now,
     event.start_time,
@@ -88,7 +92,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: Ev
   }
 
   return (
-    <div className="event-card">
+    <div className={`event-card${cardKind ? ' ' + cardKind : ''}`}>
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete event">
         🗑️
       </span>

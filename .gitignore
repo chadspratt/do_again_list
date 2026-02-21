@@ -1,5 +1,5 @@
 *.pyc
 __pycache__/
-static/do_again_list/assets/index.js
 *.tsbuildinfo
 package-lock.json
+static/do_again_list/assets
