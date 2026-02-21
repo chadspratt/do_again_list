@@ -57,6 +57,7 @@ def api_events(request):
             'max_duration': e.max_duration,
             'min_time_between_events': e.min_time_between_events,
             'max_time_between_events': e.max_time_between_events,
+            'value': e.value,
         }
         for e in events
     ]
@@ -280,6 +281,9 @@ def api_update_event_settings(request, event_id):
         if 'max_time_between_events' in data:
             event.max_time_between_events = data['max_time_between_events'].strip()
             fields.append('max_time_between_events')
+        if 'value' in data:
+            event.value = float(data['value'])
+            fields.append('value')
         if fields:
             event.save(update_fields=fields)
 

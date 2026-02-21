@@ -16,6 +16,7 @@ class PastEvents(models.Model):
     max_duration = models.CharField(max_length=50, blank=True, default='')
     min_time_between_events = models.CharField(max_length=50, blank=True, default='')
     max_time_between_events = models.CharField(max_length=50, blank=True, default='')
+    value = models.FloatField(default=1.0)
 
     def __str__(self):
         return f"{self.title} on {self.end_time}"

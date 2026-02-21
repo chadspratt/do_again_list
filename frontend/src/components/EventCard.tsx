@@ -88,6 +88,11 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
 
   return (
     <div className={`event-card${cardKind ? ' ' + cardKind : ''}`} data-event-id={dataEventId}>
+      {event.value !== undefined && event.value !== 1.0 && (
+        <span className="event-value-badge" title={`Value: ${event.value}`}>
+          ×{event.value}
+        </span>
+      )}
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete event">
         🗑️
       </span>

@@ -33,7 +33,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .event-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #0d6efd; position: relative; will-change: transform; }
 .event-card.event-good { background: #f0fdf4; border-left-color: #16a34a; }
 .event-card.event-bad  { background: #fff5f5; border-left-color: #dc2626; }
-.event-card .event-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #1a1a1a; padding-right: 30px; }
+.event-card .event-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; color: #1a1a1a; padding-right: 30px; padding-left: 36px; }
+.event-card .event-value-badge { position: absolute; top: 8px; left: 8px; font-size: 0.72rem; font-weight: 700; background: rgba(0,0,0,0.12); border-radius: 4px; padding: 1px 5px; line-height: 1.5; color: #333; }
 .event-card .event-date { font-size: .85rem; color: #666; margin-bottom: 12px; }
 .event-card .event-timer { font-size: 1.5rem; font-weight: 700; color: #0d6efd; margin-bottom: 16px; min-height: 36px; }
 .event-card .event-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
