@@ -20,6 +20,7 @@ export interface Entity {
 export interface Hero extends Entity {
   alive: boolean;
   respawnTimer: number;
+  killStreak: number;
 }
 
 export interface Enemy extends Entity {
@@ -57,7 +58,6 @@ export interface BattleState {
   enemyIdCounter: number;
   pendingHeal: boolean;
   pendingFatigue: boolean;
-  killStreak: number;
 }
 
 // ── Constants ──
@@ -84,8 +84,7 @@ export function createBattleState(gameState: GameState): BattleState {
     running: true,
     enemyIdCounter: 0,
     pendingHeal: false,
-    pendingFatigue: false,
-    killStreak: 0,
+    pendingFatigue: false
   };
 }
 
@@ -105,6 +104,7 @@ function createHero(gs: GameState): Hero {
     facingRight: true,
     alive: true,
     respawnTimer: 0,
+    killStreak: gs.streak,
   };
 }
 
@@ -190,7 +190,7 @@ export interface TickResult {
 }
 
 export function tick(state: BattleState, gs: GameState, dt: number): TickResult {
-  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, distance: state.distance, killStreak: state.killStreak };
+  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, distance: state.distance, killStreak: state.hero.killStreak };
   const hero = state.hero;
 
   // Update floating texts
@@ -287,11 +287,11 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       closestEnemy.deathTimer = DEATH_FADE_DURATION;
       result.goldEarned += closestEnemy.goldReward;
       result.xpEarned += closestEnemy.xpReward;
-      state.killStreak++;
-      result.killStreak = state.killStreak;
+      state.hero.killStreak++;
+      result.killStreak = state.hero.killStreak;
       addFloatingText(state, closestEnemy.x, closestEnemy.y - 40, `+${closestEnemy.goldReward}g`, '#eab308');
-      if (state.killStreak > 1) {
-        addFloatingText(state, closestEnemy.x, closestEnemy.y - 60, `${state.killStreak}x streak!`, '#f59e0b');
+      if (state.hero.killStreak > 1) {
+        addFloatingText(state, closestEnemy.x, closestEnemy.y - 60, `${state.hero.killStreak}x streak!`, '#f59e0b');
       }
     }
   }
@@ -312,7 +312,7 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
         hero.respawnTimer = RESPAWN_TIME;
         result.heroDied = true;
         state.buffs = [];       // Remove all buffs on death
-        state.killStreak = 0;   // Reset streak on death
+        state.hero.killStreak = 0;   // Reset streak on death
         result.killStreak = 0;
         break;
       }

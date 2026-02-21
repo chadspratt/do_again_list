@@ -148,28 +148,8 @@ export default function App() {
     [applyGameResponse],
   );
 
-  const handleGameGoldXp = useCallback(
-    (gold: number, xp: number) => {
-      // Optimistically update local game state from enemy kills
-      setGameState(prev => {
-        if (!prev) return prev;
-        let newXp = prev.xp + xp;
-        let newLevel = prev.level;
-        while (newXp >= newLevel * 100) {
-          newXp -= newLevel * 100;
-          newLevel++;
-        }
-        return {
-          ...prev,
-          gold: prev.gold + gold,
-          xp: newXp,
-          level: newLevel,
-          total_attack: prev.base_attack + newLevel,
-          total_defense: prev.base_defense + Math.floor(newLevel / 2),
-          xp_to_next_level: newLevel * 100,
-        };
-      });
-    },
+  const handleGameStateUpdate = useCallback(
+    (gs: GameState) => setGameState(gs),
     [],
   );
 
@@ -181,7 +161,7 @@ export default function App() {
     <>
       <Header onAddClick={() => setShowNewModal(true)} />
       {gameState && (
-        <BattleLane ref={battleLaneRef} gameState={gameState} onGoldXp={handleGameGoldXp} />
+        <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
       )}
       <EventGrid
         events={events}

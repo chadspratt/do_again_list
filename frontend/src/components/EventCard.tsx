@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { DoAgainEvent } from '../types';
-import { computeTimerText, isInCooldown, parseTimeOffset } from '../utils';
+import { computeTimerText, parseTimeOffset } from '../utils';
 
 interface EventCardProps {
   event: DoAgainEvent;
@@ -8,6 +8,7 @@ interface EventCardProps {
   onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  dataEventId?: number;
 }
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -19,12 +20,9 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
   hour12: true,
 };
 
-export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: EventCardProps) {
+export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId }: EventCardProps) {
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
-
-  const isRunning = event.end_time === null;
-  const inCooldown = isInCooldown(now, event.end_time, event.min_time_between_events);
 
   const hasMin = event.min_time_between_events.trim() !== '';
   const hasMax = event.max_time_between_events.trim() !== '';
@@ -49,9 +47,6 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: Ev
     }
     return text;
   }, [event.start_time, event.end_time]);
-
-  const showStartControls = !isRunning && !inCooldown;
-  const showEndControls = !inCooldown;
 
   function handleStart() {
     const startDate = startInput.trim()
@@ -92,7 +87,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: Ev
   }
 
   return (
-    <div className={`event-card${cardKind ? ' ' + cardKind : ''}`}>
+    <div className={`event-card${cardKind ? ' ' + cardKind : ''}`} data-event-id={dataEventId}>
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete event">
         🗑️
       </span>
@@ -105,33 +100,29 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings }: Ev
       </div>
       <div className="event-timer">{timerText}</div>
 
-      {showStartControls && (
-        <div className="event-actions">
-          <input
-            type="text"
-            placeholder="start e.g. 1h30m"
-            value={startInput}
-            onChange={(e) => setStartInput(e.target.value)}
-          />
-          <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
-            Start
-          </button>
-        </div>
-      )}
+    <div className="event-actions">
+        <input
+        type="text"
+        placeholder="start e.g. 1h30m"
+        value={startInput}
+        onChange={(e) => setStartInput(e.target.value)}
+        />
+        <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
+        Start
+        </button>
+    </div>
 
-      {showEndControls && (
-        <div className="event-actions" style={{ marginTop: '6px' }}>
-          <input
-            type="text"
-            placeholder="end e.g. 1h30m"
-            value={endInput}
-            onChange={(e) => setEndInput(e.target.value)}
-          />
-          <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
-            End
-          </button>
-        </div>
-      )}
+    <div className="event-actions" style={{ marginTop: '6px' }}>
+        <input
+        type="text"
+        placeholder="end e.g. 1h30m"
+        value={endInput}
+        onChange={(e) => setEndInput(e.target.value)}
+        />
+        <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
+        End
+        </button>
+    </div>
     </div>
   );
 }

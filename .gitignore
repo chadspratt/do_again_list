@@ -3,3 +3,4 @@ __pycache__/
 *.tsbuildinfo
 package-lock.json
 static/do_again_list/assets
+node_modules/

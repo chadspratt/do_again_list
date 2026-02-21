@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useSta
 import type { GameState } from '../types';
 import { createBattleState, tick, spawnEnemyFromEvent, applyBuff, type BattleState } from '../game/engine';
 import { renderFrame } from '../game/renderer';
+import { syncBattleState } from '../api';
 
 export interface BattleLaneHandle {
   spawnEnemy: (level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) => void;
@@ -13,19 +14,16 @@ export interface BattleLaneHandle {
 
 interface BattleLaneProps {
   gameState: GameState;
-  onGoldXp: (gold: number, xp: number) => void;
+  onGameStateUpdate: (gs: GameState) => void;
 }
 
-export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function BattleLane({ gameState, onGoldXp }, ref) {
+export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function BattleLane({ gameState, onGameStateUpdate }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const battleRef = useRef<BattleState | null>(null);
   const gameStateRef = useRef(gameState);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
-  const accGold = useRef(0);
-  const accXp = useRef(0);
-  const reportTimer = useRef(0);
-  const [killStreak, setKillStreak] = useState(0);
+  const [killStreak, setKillStreak] = useState(gameState.streak);
 
   // Keep gameState ref current
   gameStateRef.current = gameState;
@@ -83,8 +81,9 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
           text: `Fatigue -${dmg}`, color: '#f97316', life: 1.2, maxLife: 1.2,
         });
       }
-    },    getKillStreak() {
-      return battleRef.current?.killStreak ?? 0;
+    },
+    getKillStreak() {
+      return battleRef.current?.hero.killStreak ?? 0;
     },  }), []);
 
   // Animation loop
@@ -102,27 +101,27 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
 
     const result = tick(battle, gameStateRef.current, dt);
 
-    // Accumulate gold/xp from kills
-    if (result.goldEarned > 0 || result.xpEarned > 0) {
-      accGold.current += result.goldEarned;
-      accXp.current += result.xpEarned;
-    }
-
     // Sync kill streak display
     setKillStreak(result.killStreak);
 
-    // Report gold/xp to parent every 2 seconds
-    reportTimer.current += dt;
-    if (reportTimer.current >= 2 && (accGold.current > 0 || accXp.current > 0)) {
-      onGoldXp(accGold.current, accXp.current);
-      accGold.current = 0;
-      accXp.current = 0;
-      reportTimer.current = 0;
+    // Sync with server on enemy kill or hero death
+    if (result.goldEarned > 0 || result.xpEarned > 0) {
+      syncBattleState(result.goldEarned, result.xpEarned, battle.hero.killStreak)
+        .catch((error) => {
+          console.error('Failed to sync battle state on reward update:', error);
+        });
+    }
+    if (result.heroDied) {
+      syncBattleState(0, 0, 0)
+        .then(gs => onGameStateUpdate(gs))
+        .catch((error) => {
+          console.error('Failed to sync battle state on hero death:', error);
+        });
     }
 
     renderFrame(ctx, battle);
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [onGoldXp]);
+  }, [onGameStateUpdate]);
 
   useEffect(() => {
     animationRef.current = requestAnimationFrame(gameLoop);

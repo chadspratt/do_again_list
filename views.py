@@ -166,13 +166,11 @@ def api_update_event(request, event_id):
                     # On time: full reward
                     delta = {'attack': 3, 'defense': 2, 'speed': 1}
                     gold_to_award += 15
-                    state.streak += 1
-                    game_messages.append(f'Good habit on time! Streak: {state.streak}')
+                    game_messages.append(f'Good habit on time!')
                 else:
                     # Late: smaller reward
                     delta = {'attack': 1, 'defense': 1, 'speed': 0}
                     gold_to_award += 5
-                    state.streak = 0
                     game_messages.append('Good habit but late — reduced reward.')
 
             elif event_kind == 'bad':
@@ -180,7 +178,6 @@ def api_update_event(request, event_id):
                     # Too soon: larger penalty
                     delta = {'attack': -3, 'defense': -2, 'speed': -1}
                     gold_to_award = 0
-                    state.streak = 0
                     game_messages.append('Bad habit too soon! Large penalty.')
                 else:
                     # Waited long enough: smaller penalty
@@ -193,13 +190,11 @@ def api_update_event(request, event_id):
                     # Fully compliant
                     delta = {'attack': 2, 'defense': 1, 'speed': 1}
                     gold_to_award += 10
-                    state.streak += 1
-                    game_messages.append(f'Neutral event on schedule! Streak: {state.streak}')
+                    game_messages.append(f'Neutral event on schedule!')
                 else:
                     # Violated a bound
                     delta = {'attack': 1, 'defense': 0, 'speed': 0}
                     gold_to_award += 3
-                    state.streak = 0
                     game_messages.append('Neutral event but timing was off — reduced reward.')
 
             # Hero buffs (positive deltas) and debuffs (negative deltas)
@@ -306,17 +301,19 @@ def api_game_state(request):
 
 
 @require_POST
-def api_report_distance(request):
-    """Report a run distance from the client and update best distance."""
+def api_sync_battle(request):
+    """Sync battle results (gold earned, xp earned, current streak) to the game state."""
     try:
         data = json.loads(request.body)
-        distance = int(data.get('distance', 0))
+        gold = max(0, int(data.get('gold', 0)))
+        xp = max(0, int(data.get('xp', 0)))
+        streak = max(0, int(data.get('streak', 0)))
         state = _get_game_state()
-        if distance > state.best_distance:
-            state.best_distance = distance
-            state.save(update_fields=['best_distance'])
-            return JsonResponse({'success': True, 'new_record': True, 'best_distance': state.best_distance})
-        return JsonResponse({'success': True, 'new_record': False, 'best_distance': state.best_distance})
+        state.gold += gold
+        state.streak = streak
+        state.add_xp(xp)
+        state.save()
+        return JsonResponse({'success': True, 'game': _game_state_dict(state)})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
