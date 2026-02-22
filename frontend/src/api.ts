@@ -68,7 +68,7 @@ export async function fetchGameState(): Promise<GameState> {
   return res.json();
 }
 
-export async function syncBattleState(gold: number, xp: number, streak: number): Promise<GameState> {
-  const res = await apiPost(`${API_BASE}/game/sync/`, { gold, xp, streak });
+export async function syncBattleState(gold: number, xp: number, streak: number, heroHp: number): Promise<GameState> {
+  const res = await apiPost(`${API_BASE}/game/sync/`, { gold, xp, streak, hero_hp: heroHp });
   return res.game!;
 }

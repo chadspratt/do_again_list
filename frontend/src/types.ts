@@ -33,4 +33,5 @@ export interface GameState {
   xp_to_next_level: number;
   streak: number;
   items: string[];
+  hero_hp: number;
 }

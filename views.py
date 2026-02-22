@@ -30,6 +30,7 @@ def _game_state_dict(state):
         'xp_to_next_level': state.xp_to_next_level(),
         'streak': state.streak,
         'items': state.items,
+        'hero_hp': state.hero_hp,
     }
 
 
@@ -312,9 +313,11 @@ def api_sync_battle(request):
         gold = max(0, int(data.get('gold', 0)))
         xp = max(0, int(data.get('xp', 0)))
         streak = max(0, int(data.get('streak', 0)))
+        hero_hp = int(data.get('hero_hp', -1))
         state = _get_game_state()
         state.gold += gold
         state.streak = streak
+        state.hero_hp = hero_hp
         state.add_xp(xp)
         state.save()
         return JsonResponse({'success': True, 'game': _game_state_dict(state)})

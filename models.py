@@ -49,6 +49,7 @@ class GameState(models.Model):
     best_distance = models.IntegerField(default=0)
     streak = models.IntegerField(default=0)
     items = models.JSONField(default=list)
+    hero_hp = models.IntegerField(default=-1)  # -1 = not persisted yet, use full HP
 
     def total_attack(self):
         return self.base_attack + self.level
