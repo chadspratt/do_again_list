@@ -105,17 +105,19 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       </div>
       <div className="event-timer">{timerText}</div>
 
-    <div className="event-actions">
-        <input
-        type="text"
-        placeholder="start e.g. 1h30m"
-        value={startInput}
-        onChange={(e) => setStartInput(e.target.value)}
-        />
-        <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
-        Start
-        </button>
-    </div>
+    { event.end_time &&
+        <div className="event-actions">
+            <input
+            type="text"
+            placeholder="start e.g. 1h30m"
+            value={startInput}
+            onChange={(e) => setStartInput(e.target.value)}
+            />
+            <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
+            Start
+            </button>
+        </div>
+    }
 
     <div className="event-actions" style={{ marginTop: '6px' }}>
         <input
