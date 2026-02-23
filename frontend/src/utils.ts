@@ -1,3 +1,5 @@
+import type { DoAgainEvent } from './types';
+
 /**
  * Parse a time offset string like "1d5h30m" to milliseconds.
  * Returns 0 if blank or invalid.
@@ -129,4 +131,79 @@ export function isInCooldown(
   const minTimeMs = parseTimeOffsetMs(minTimeBetween);
   if (!minTimeMs) return false;
   return (now - endMs) < minTimeMs;
+}
+
+/**
+ * Sort events by urgency / due time.
+ *
+ * Started events (no end_time), ordered by group then key:
+ *   0 – exceeded max_duration        → most overtime first
+ *   1 – under max but ≥ min duration → least time until max first
+ *   2 – no min/max or over min       → earliest start first
+ *   3 – under min_duration           → least time until min first
+ *
+ * Ended events, ordered by group then key:
+ *   4 – exceeded max_time_between    → most overdue first
+ *   5 – over min but under max_time  → least time until max first
+ *   6 – no min/max time_between      → oldest end_time first
+ *   7 – under min_time_between       → least time until min first
+ */
+export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEvent[] {
+  function classify(e: DoAgainEvent): [number, number] {
+    const startMs = new Date(e.start_time).getTime();
+    const minDurMs = parseTimeOffsetMs(e.min_duration);
+    const maxDurMs = parseTimeOffsetMs(e.max_duration);
+    const minTimeMs = parseTimeOffsetMs(e.min_time_between_events);
+    const maxTimeMs = parseTimeOffsetMs(e.max_time_between_events);
+
+    if (!e.end_time) {
+      const elapsed = now - startMs;
+      if (maxDurMs > 0 && elapsed >= maxDurMs) {
+        // Most overtime first → smallest key = most overtime
+        return [0, -(elapsed - maxDurMs)];
+      }
+      if (maxDurMs > 0) {
+        // Least time until max first
+        return [1, startMs + maxDurMs];
+      }
+      if (minDurMs > 0 && elapsed >= minDurMs) {
+        // Least time since start first
+        return [2, startMs];
+      }
+      if (minDurMs > 0 && elapsed < minDurMs) {
+        // Least time until min first
+        return [3, startMs + minDurMs];
+      }
+      // No active timer (no max, min already passed or absent): earliest start first
+      return [2, startMs];
+    } else {
+      const endMs = new Date(e.end_time).getTime();
+      const sinceEnd = now - endMs;
+      if (maxTimeMs > 0 && sinceEnd >= maxTimeMs) {
+        // Most overdue first → smallest key = most overtime
+        return [4, -(sinceEnd - maxTimeMs)];
+      }
+      if (maxTimeMs > 0) {
+        // Least time until max first
+        return [5, endMs + maxTimeMs];
+      }
+      if (minTimeMs > 0 && sinceEnd >= minTimeMs) {
+        // Least time since end first
+        return [6, endMs];
+      }
+      if (minTimeMs > 0 && sinceEnd < minTimeMs) {
+        // Least time until min first
+        return [7, endMs + minTimeMs];
+      }
+      // No active timer: oldest end_time first
+      return [6, endMs];
+    }
+  }
+
+  return [...events].sort((a, b) => {
+    const [bucketA, keyA] = classify(a);
+    const [bucketB, keyB] = classify(b);
+    if (bucketA !== bucketB) return bucketA - bucketB;
+    return keyA - keyB;
+  });
 }

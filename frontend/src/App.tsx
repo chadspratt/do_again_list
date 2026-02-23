@@ -13,6 +13,7 @@ import { EventGrid } from './components/EventGrid';
 import { NewEventModal } from './components/NewEventModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
+import { sortEventsByDue } from './utils';
 import './App.css';
 
 export default function App() {
@@ -22,7 +23,10 @@ export default function App() {
   const [settingsEvent, setSettingsEvent] = useState<DoAgainEvent | null>(null);
   const [now, setNow] = useState(Date.now());
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [sortMode, setSortMode] = useState<'default' | 'due'>('default');
   const battleLaneRef = useRef<BattleLaneHandle>(null);
+
+  const displayedEvents = sortMode === 'due' ? sortEventsByDue(events, now) : events;
 
   const loadEvents = useCallback(async () => {
     try {
@@ -159,12 +163,16 @@ export default function App() {
 
   return (
     <>
-      <Header onAddClick={() => setShowNewModal(true)} />
+      <Header
+        onAddClick={() => setShowNewModal(true)}
+        sortMode={sortMode}
+        onSortToggle={() => setSortMode(m => m === 'default' ? 'due' : 'default')}
+      />
       {gameState && (
         <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
       )}
       <EventGrid
-        events={events}
+        events={displayedEvents}
         now={now}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
