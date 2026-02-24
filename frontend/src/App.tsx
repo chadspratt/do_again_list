@@ -116,9 +116,9 @@ export default function App() {
   );
 
   const handleUpdate = useCallback(
-    async (eventId: number, action: string, datetime: string, endDatetime?: string) => {
+    async (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => {
       const killStreak = battleLaneRef.current?.getKillStreak() ?? 0;
-      const result = await updateEvent(eventId, action, datetime, endDatetime, killStreak);
+      const result = await updateEvent(eventId, action, datetime, endDatetime, killStreak, nextTime);
       if (result.success) {
         await loadEvents();
         applyGameResponse(result);

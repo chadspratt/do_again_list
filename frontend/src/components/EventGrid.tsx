@@ -5,7 +5,7 @@ import { EventCard } from './EventCard';
 interface EventGridProps {
   events: DoAgainEvent[];
   now: number;
-  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string) => void;
+  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
 }

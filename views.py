@@ -60,6 +60,7 @@ def api_events(request):
             'max_time_between_events': e.max_time_between_events,
             'value': e.value,
             'repeats': e.repeats,
+            'next_time': e.next_time.isoformat() if e.next_time else None,
         }
         for e in events
     ]
@@ -96,7 +97,7 @@ def api_create_event(request):
 
 @require_POST
 def api_update_event(request, event_id):
-    """Update an event's times. Supports 'start' and 'end' actions."""
+    """Update an event's times. Supports 'start', 'end', and 'set_next' actions."""
     try:
         data = json.loads(request.body)
         event = get_object_or_404(PastEvents, id=event_id)
@@ -104,7 +105,18 @@ def api_update_event(request, event_id):
 
         from dateutil import parser as dt_parser
 
+        # Handle set_next action: only update next_time, nothing else
+        if action == 'set_next':
+            next_time_str = data.get('next_time', '').strip() if isinstance(data.get('next_time', ''), str) else ''
+            if next_time_str:
+                event.next_time = dt_parser.isoparse(next_time_str)
+            else:
+                event.next_time = None
+            event.save(update_fields=['next_time'])
+            return JsonResponse({'success': True})
+
         ms_since_last_event = 0
+        old_next_time = event.next_time  # Capture before modifications for reward calc
         # Only archive if the event already has an end_time set
         if event.end_time is not None:
             ms_since_last_event = (timezone.now() - event.end_time).total_seconds() * 1000
@@ -126,6 +138,13 @@ def api_update_event(request, event_id):
             event.end_time = None
         else:  # action == 'end'
             event.end_time = timezone.now()
+
+        # Handle next_time: set from request body if provided
+        next_time_str = data.get('next_time', '').strip() if isinstance(data.get('next_time', ''), str) else ''
+        if next_time_str:
+            event.next_time = dt_parser.isoparse(next_time_str)
+        elif action == 'end' or action == 'start':
+            event.next_time = None  # Clear next_time when starting/ending
 
         event.save()
 
@@ -151,9 +170,22 @@ def api_update_event(request, event_id):
         else:
             event_kind = 'neutral'
 
+        # If previous occurrence had next_time set and event had end_time,
+        # override min/max timing compliance with the next_time deadline.
+        use_next_time_override = (
+            old_next_time is not None
+            and ms_since_last_event > 0
+        )
+
         # Timing compliance (only meaningful when we have a previous end_time)
-        min_ok = not has_min or ms_since_last_event >= min_interval_ms
-        max_ok = not has_max or ms_since_last_event <= max_interval_ms
+        if use_next_time_override:
+            # next_time is an absolute deadline — did the user act before it?
+            acted_before_deadline = timezone.now() <= old_next_time
+            min_ok = True  # next_time doesn't impose a minimum
+            max_ok = acted_before_deadline
+        else:
+            min_ok = not has_min or ms_since_last_event >= min_interval_ms
+            max_ok = not has_max or ms_since_last_event <= max_interval_ms
         # First-ever occurrence counts as compliant
         if ms_since_last_event == 0:
             min_ok = True

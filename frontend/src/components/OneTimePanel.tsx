@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import type { DoAgainEvent } from '../types';
-import { computeTimerText, parseTimeOffset } from '../utils';
+import { computeTimerText, parseTimeOffset, parseTimeOffsetMs } from '../utils';
 
 interface OneTimePanelProps {
   events: DoAgainEvent[];
   now: number;
-  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string) => void;
+  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
 }
@@ -25,6 +25,7 @@ function OneTimeCard({
 }) {
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
+  const [nextInput, setNextInput] = useState('');
 
   const isPending = event.start_time === null && event.end_time === null;
   const timerText = isPending
@@ -37,6 +38,7 @@ function OneTimeCard({
         event.max_duration,
         event.min_time_between_events,
         event.max_time_between_events,
+        event.next_time,
       );
 
   function handleStart() {
@@ -48,14 +50,19 @@ function OneTimeCard({
   function handleEnd() {
     const endDate = endInput.trim() ? parseTimeOffset(endInput) : null;
     const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
+    const nextTime = nextInput.trim()
+      ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+      : undefined;
     onUpdate(
       event.id,
       'end',
       startDate.toISOString(),
       endDate ? endDate.toISOString() : undefined,
+      nextTime,
     );
     setStartInput('');
     setEndInput('');
+    setNextInput('');
   }
 
   return (
@@ -82,33 +89,53 @@ function OneTimeCard({
         />
         <button className="btn btn-primary btn-sm" onClick={handleEnd}>End</button>
       </div>
+      <div className="pending-actions" style={{ marginTop: '6px' }}>
+        <input
+          type="text"
+          placeholder="next e.g. 2d"
+          value={nextInput}
+          onChange={(e) => setNextInput(e.target.value)}
+        />
+      </div>
     </div>
   );
 }
 
 export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings }: OneTimePanelProps) {
-  if (events.length === 0) {
-    return (
-      <div className="onetime-panel">
-        <div className="onetime-header">One-Time</div>
-        <div className="onetime-empty">No one-time events.</div>
-      </div>
-    );
-  }
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const visibleEvents = showCompleted
+    ? events
+    : events.filter(e => e.end_time === null);
+  const hiddenCount = events.length - events.filter(e => e.end_time === null).length;
 
   return (
     <div className="onetime-panel">
       <div className="onetime-header">One-Time</div>
-      {events.map((event) => (
-        <OneTimeCard
-          key={event.id}
-          event={event}
-          now={now}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          onOpenSettings={onOpenSettings}
-        />
-      ))}
+      {hiddenCount > 0 && (
+        <label className="onetime-show-completed">
+          <input
+            type="checkbox"
+            checked={showCompleted}
+            onChange={(e) => setShowCompleted(e.target.checked)}
+          />
+          Show completed ({hiddenCount})
+        </label>
+      )}
+      {visibleEvents.length === 0 ? (
+        <div className="onetime-empty">No one-time events.</div>
+      ) : (
+        visibleEvents.map((event) => (
+          <OneTimeCard
+            key={event.id}
+            event={event}
+            now={now}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onOpenSettings={onOpenSettings}
+          />
+        ))
+      )}
     </div>
   );
 }

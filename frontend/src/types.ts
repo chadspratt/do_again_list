@@ -3,6 +3,7 @@ export interface DoAgainEvent {
   title: string;
   start_time: string | null;
   end_time: string | null;
+  next_time: string | null;
   default_duration: number;
   min_duration: string;
   max_duration: string;

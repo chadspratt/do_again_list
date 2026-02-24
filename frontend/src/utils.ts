@@ -84,6 +84,7 @@ export function computeTimerText(
   maxDuration: string,
   minTimeBetween: string,
   maxTimeBetween: string,
+  nextTime?: string | null,
 ): string {
   if (!startTime) return '';
   const startMs = new Date(startTime).getTime();
@@ -94,7 +95,7 @@ export function computeTimerText(
   const minTimeMs = parseTimeOffsetMs(minTimeBetween);
   const maxTimeMs = parseTimeOffsetMs(maxTimeBetween);
 
-  // Event is started (no end_time)
+  // Event is started (no end_time) — ignore next_time
   if (!hasEnd) {
     const elapsed = now - startMs;
     if (minDurMs && elapsed < minDurMs) {
@@ -108,6 +109,13 @@ export function computeTimerText(
   }
 
   // Event is ended (has end_time)
+  // If next_time is set, it overrides min/max between for the timer
+  if (nextTime) {
+    const nextMs = new Date(nextTime).getTime();
+    const remaining = nextMs - now;
+    return formatCountdown(remaining, 'Next in');
+  }
+
   const sinceEnd = now - endMs;
   if (minTimeMs && sinceEnd < minTimeMs) {
     return formatCountdown(minTimeMs - sinceEnd, 'Ready in');
@@ -181,6 +189,19 @@ export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEve
     } else {
       const endMs = new Date(e.end_time).getTime();
       const sinceEnd = now - endMs;
+
+      // If next_time is set, use it as the deadline instead of max interval
+      if (e.next_time) {
+        const nextMs = new Date(e.next_time).getTime();
+        if (now >= nextMs) {
+          // Overdue past next_time
+          return [4, -(now - nextMs)];
+        } else {
+          // Counting down to next_time
+          return [5, nextMs];
+        }
+      }
+
       if (maxTimeMs > 0 && sinceEnd >= maxTimeMs) {
         // Most overdue first → smallest key = most overtime
         return [4, -(sinceEnd - maxTimeMs)];

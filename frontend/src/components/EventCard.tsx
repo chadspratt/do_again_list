@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import type { DoAgainEvent } from '../types';
-import { computeTimerText, parseTimeOffset } from '../utils';
+import { computeTimerText, parseTimeOffset, parseTimeOffsetMs } from '../utils';
 
 interface EventCardProps {
   event: DoAgainEvent;
   now: number;
-  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string) => void;
+  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
   dataEventId?: number;
@@ -23,6 +23,7 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
 export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId }: EventCardProps) {
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
+  const [nextInput, setNextInput] = useState('');
 
   const hasMin = event.min_time_between_events.trim() !== '';
   const hasMax = event.max_time_between_events.trim() !== '';
@@ -36,6 +37,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
     event.max_duration,
     event.min_time_between_events,
     event.max_time_between_events,
+    event.next_time,
   );
 
   const dateDisplay = useMemo(() => {
@@ -56,6 +58,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
     onUpdate(event.id, 'start', startDate.toISOString());
     setStartInput('');
     setEndInput('');
+    setNextInput('');
   }
 
   function handleEnd() {
@@ -77,14 +80,20 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       startDate = new Date();
     }
 
+    const nextTime = nextInput.trim()
+      ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+      : undefined;
+
     onUpdate(
       event.id,
       'end',
       startDate.toISOString(),
       endDate ? endDate.toISOString() : undefined,
+      nextTime,
     );
     setStartInput('');
     setEndInput('');
+    setNextInput('');
   }
 
   return (
@@ -131,6 +140,28 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
         End
         </button>
     </div>
+
+    { event.end_time &&
+        <div className="event-actions" style={{ marginTop: '6px' }}>
+            <input
+            type="text"
+            placeholder="next e.g. 2d"
+            value={nextInput}
+            onChange={(e) => setNextInput(e.target.value)}
+            />
+            <button className="btn btn-secondary btn-sm" onClick={() => {
+                const nextTime = nextInput.trim()
+                    ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+                    : undefined;
+                if (nextTime) {
+                    onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
+                    setNextInput('');
+                }
+            }} title="Set next time">
+            Next
+            </button>
+        </div>
+    }
     </div>
   );
 }

@@ -51,10 +51,12 @@ export async function updateEvent(
   datetime: string,
   endDatetime?: string,
   killStreak?: number,
+  nextTime?: string,
 ): Promise<ApiResponse> {
   const body: Record<string, string | number> = { action, datetime };
   if (endDatetime) body.end_datetime = endDatetime;
   if (killStreak !== undefined) body.kill_streak = killStreak;
+  if (nextTime) body.next_time = nextTime;
   return apiPost(`${API_BASE}/events/${eventId}/update/`, body);
 }
 

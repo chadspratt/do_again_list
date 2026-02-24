@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { DoAgainEvent } from '../types';
-import { parseTimeOffset } from '../utils';
+import { parseTimeOffset, parseTimeOffsetMs } from '../utils';
 
 interface PendingPanelProps {
   events: DoAgainEvent[];
-  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string) => void;
+  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
 }
@@ -22,6 +22,7 @@ function PendingCard({
 }) {
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
+  const [nextInput, setNextInput] = useState('');
 
   function handleStart() {
     const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
@@ -32,14 +33,19 @@ function PendingCard({
   function handleEnd() {
     const endDate = endInput.trim() ? parseTimeOffset(endInput) : null;
     const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
+    const nextTime = nextInput.trim()
+      ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+      : undefined;
     onUpdate(
       event.id,
       'end',
       startDate.toISOString(),
       endDate ? endDate.toISOString() : undefined,
+      nextTime,
     );
     setStartInput('');
     setEndInput('');
+    setNextInput('');
   }
 
   return (
@@ -64,6 +70,14 @@ function PendingCard({
           onChange={(e) => setEndInput(e.target.value)}
         />
         <button className="btn btn-primary btn-sm" onClick={handleEnd}>End</button>
+      </div>
+      <div className="pending-actions" style={{ marginTop: '6px' }}>
+        <input
+          type="text"
+          placeholder="next e.g. 2d"
+          value={nextInput}
+          onChange={(e) => setNextInput(e.target.value)}
+        />
       </div>
     </div>
   );
