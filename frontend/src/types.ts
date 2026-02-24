@@ -1,7 +1,7 @@
 export interface DoAgainEvent {
   id: number;
   title: string;
-  start_time: string;
+  start_time: string | null;
   end_time: string | null;
   default_duration: number;
   min_duration: string;

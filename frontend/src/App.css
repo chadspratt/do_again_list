@@ -45,6 +45,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .event-card .settings-icon:hover { opacity: 1; }
 .events-empty { text-align: center; color: #999; padding: 60px 20px; font-size: 1.1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
 
+/* Page Layout */
+.page-layout { display: flex; gap: 20px; align-items: flex-start; max-width: 1500px; margin: 0 auto; }
+.main-panel { flex: 1; min-width: 0; }
+
+/* Pending Panel */
+.pending-panel { width: 260px; flex-shrink: 0; }
+.pending-header { font-size: .85rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; padding: 0 4px; }
+.pending-card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #adb5bd; position: relative; margin-bottom: 10px; }
+.pending-card .event-title { font-size: .95rem; font-weight: 600; color: #1a1a1a; padding-right: 56px; margin-bottom: 10px; }
+.pending-card .delete-icon { position: absolute; top: 10px; right: 10px; cursor: pointer; font-size: 1.1rem; opacity: 0.5; transition: opacity 0.2s; }
+.pending-card .delete-icon:hover { opacity: 1; }
+.pending-card .settings-icon { position: absolute; top: 10px; right: 34px; cursor: pointer; font-size: 1.1rem; opacity: 0.5; transition: opacity 0.2s; }
+.pending-card .settings-icon:hover { opacity: 1; }
+.pending-actions { display: flex; gap: 6px; align-items: center; }
+.pending-actions input[type="text"] { flex: 1; min-width: 70px; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: .75rem; }
+.pending-empty { color: #999; font-size: .85rem; text-align: center; padding: 20px 12px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
 /* Loading */
 .loading { text-align: center; padding: 60px 20px; font-size: 1.1rem; color: #666; }
 

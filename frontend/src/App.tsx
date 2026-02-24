@@ -12,6 +12,7 @@ import { Header } from './components/Header';
 import { EventGrid } from './components/EventGrid';
 import { NewEventModal } from './components/NewEventModal';
 import { SettingsModal } from './components/SettingsModal';
+import { PendingPanel } from './components/PendingPanel';
 import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
 import { sortEventsByDue } from './utils';
 import './App.css';
@@ -26,7 +27,9 @@ export default function App() {
   const [sortMode, setSortMode] = useState<'default' | 'due'>('default');
   const battleLaneRef = useRef<BattleLaneHandle>(null);
 
-  const displayedEvents = sortMode === 'due' ? sortEventsByDue(events, now) : events;
+  const pendingEvents = events.filter(e => e.start_time === null && e.end_time === null);
+  const activeEvents = events.filter(e => e.start_time !== null);
+  const displayedEvents = sortMode === 'due' ? sortEventsByDue(activeEvents, now) : activeEvents;
 
   const loadEvents = useCallback(async () => {
     try {
@@ -96,8 +99,8 @@ export default function App() {
   }, []);
 
   const handleCreate = useCallback(
-    async (title: string, date: string) => {
-      const result = await createEvent(title, date);
+    async (title: string, date: string, pending?: boolean) => {
+      const result = await createEvent(title, date, pending);
       if (result.success) {
         setShowNewModal(false);
         await loadEvents();
@@ -171,13 +174,23 @@ export default function App() {
       {gameState && (
         <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
       )}
-      <EventGrid
-        events={displayedEvents}
-        now={now}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        onOpenSettings={(event) => setSettingsEvent(event)}
-      />
+      <div className="page-layout">
+        <PendingPanel
+          events={pendingEvents}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          onOpenSettings={(event) => setSettingsEvent(event)}
+        />
+        <div className="main-panel">
+          <EventGrid
+            events={displayedEvents}
+            now={now}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onOpenSettings={(event) => setSettingsEvent(event)}
+          />
+        </div>
+      </div>
       <NewEventModal
         isOpen={showNewModal}
         onClose={() => setShowNewModal(false)}

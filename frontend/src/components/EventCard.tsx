@@ -39,6 +39,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
   );
 
   const dateDisplay = useMemo(() => {
+    if (!event.start_time) return '';
     const startDate = new Date(event.start_time);
     let text = 'Start: ' + startDate.toLocaleString('en-US', DATE_OPTS);
     if (event.end_time) {

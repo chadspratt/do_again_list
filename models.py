@@ -8,7 +8,7 @@ class PastEvents(models.Model):
 
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    start_time = models.DateTimeField()
+    start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
     ordering = models.IntegerField(default=0)
     default_duration = models.IntegerField(default=0)

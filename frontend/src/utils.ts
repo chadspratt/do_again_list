@@ -78,13 +78,14 @@ export function formatElapsed(ms: number): string {
  */
 export function computeTimerText(
   now: number,
-  startTime: string,
+  startTime: string | null,
   endTime: string | null,
   minDuration: string,
   maxDuration: string,
   minTimeBetween: string,
   maxTimeBetween: string,
 ): string {
+  if (!startTime) return '';
   const startMs = new Date(startTime).getTime();
   const hasEnd = !!endTime;
   const endMs = hasEnd ? new Date(endTime).getTime() : 0;
@@ -150,6 +151,7 @@ export function isInCooldown(
  */
 export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEvent[] {
   function classify(e: DoAgainEvent): [number, number] {
+    if (!e.start_time) return [8, 0]; // Pending events go last
     const startMs = new Date(e.start_time).getTime();
     const minDurMs = parseTimeOffsetMs(e.min_duration);
     const maxDurMs = parseTimeOffsetMs(e.max_duration);

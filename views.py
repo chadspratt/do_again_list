@@ -71,12 +71,16 @@ def api_create_event(request):
     try:
         data = json.loads(request.body)
         title = data.get('title', '').strip()
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Title is required.'})
+        pending = data.get('pending', False)
         date_str = data.get('date', '').strip()
-        if not title or not date_str:
-            return JsonResponse({'success': False, 'error': 'Title and date are required.'})
-        from dateutil import parser
-        event_date = parser.isoparse(date_str)
-        event = PastEvents.objects.create(title=title, start_time=event_date)
+        if pending or not date_str:
+            event = PastEvents.objects.create(title=title)
+        else:
+            from dateutil import parser
+            event_date = parser.isoparse(date_str)
+            event = PastEvents.objects.create(title=title, start_time=event_date)
 
         # Game reward: +1 base attack for creating an event type
         state = _get_game_state()
@@ -108,8 +112,8 @@ def api_update_event(request, event_id):
                 end_time=event.end_time,
             )
 
-        # Update start_time unless this is an open event with no end_time
-        if event.end_time is not None:
+        # Update start_time unless this is an already in-progress event (has start, no end)
+        if event.end_time is not None or event.start_time is None:
             event.start_time = dt_parser.isoparse(data['datetime'])
 
         # Determine end_time

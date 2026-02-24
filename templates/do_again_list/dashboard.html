@@ -51,6 +51,21 @@
         .event-card .settings-icon { position: absolute; top: 12px; right: 38px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s; }
         .event-card .settings-icon:hover { opacity: 1; }
         .events-empty { text-align: center; color: #999; padding: 60px 20px; font-size: 1.1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
+        /* Page Layout */
+        .page-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .pending-panel { width: 280px; flex-shrink: 0; }
+        .pending-header { font-size: .85rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; padding: 0 4px; }
+        .main-panel { flex: 1; min-width: 0; }
+        .pending-card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #adb5bd; position: relative; margin-bottom: 10px; }
+        .pending-card .event-title { font-size: .95rem; font-weight: 600; color: #1a1a1a; padding-right: 56px; margin-bottom: 10px; }
+        .pending-card .delete-icon { position: absolute; top: 10px; right: 10px; cursor: pointer; font-size: 1.1rem; opacity: 0.5; transition: opacity 0.2s; }
+        .pending-card .delete-icon:hover { opacity: 1; }
+        .pending-card .settings-icon { position: absolute; top: 10px; right: 34px; cursor: pointer; font-size: 1.1rem; opacity: 0.5; transition: opacity 0.2s; }
+        .pending-card .settings-icon:hover { opacity: 1; }
+        .pending-card .event-actions { display: flex; gap: 6px; align-items: center; }
+        .pending-card .event-actions input[type="text"] { flex: 1; min-width: 70px; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: .75rem; }
+        .pending-empty { color: #999; font-size: .85rem; text-align: center; padding: 20px 12px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
     </style>
 </head>
 <body>
@@ -69,12 +84,42 @@
     <button class="btn btn-primary" onclick="document.getElementById('newEventModal').classList.add('active')">+ Add Event</button>
 </div>
 
-<!-- Events Grid -->
-<div class="events-container">
+<!-- Main Layout: pending panel left, events right -->
+<div class="page-layout">
+
+    <!-- Pending Events Panel -->
+    <div class="pending-panel">
+        <div class="pending-header">Pending</div>
+        <div id="pendingList">
+            {% if pending_events %}
+            {% for event in pending_events %}
+            <div class="pending-card" data-event-id="{{ event.id }}" data-default-duration="{{ event.default_duration }}" data-min-duration="{{ event.min_duration }}" data-max-duration="{{ event.max_duration }}" data-min-time="{{ event.min_time_between_events }}" data-max-time="{{ event.max_time_between_events }}">
+                <span class="delete-icon" data-action="delete" title="Delete">🗑️</span>
+                <span class="settings-icon" data-action="settings" title="Settings">⚙️</span>
+                <div class="event-title">{{ event.title }}</div>
+                <div class="event-actions">
+                    <input type="text" placeholder="e.g. 1h30m" id="startInput{{ event.id }}">
+                    <button class="btn btn-success btn-sm" data-action="start">Start</button>
+                </div>
+                <div class="event-actions" style="margin-top:6px">
+                    <input type="text" placeholder="e.g. 1h30m" id="endInput{{ event.id }}">
+                    <button class="btn btn-primary btn-sm" data-action="end">End</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="pending-empty">No pending events.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Events Grid -->
+    <div class="main-panel">
+    <div class="events-container">
     <div class="events-grid" id="eventsList">
         {% if events %}
         {% for event in events %}
-        <div class="event-card" data-event-id="{{ event.id }}" data-event-start="{{ event.start_time.isoformat }}" data-event-end="{% if event.end_time %}{{ event.end_time.isoformat }}{% endif %}" data-default-duration="{{ event.default_duration }}" data-min-duration="{{ event.min_duration }}" data-max-duration="{{ event.max_duration }}" data-min-time="{{ event.min_time_between_events }}" data-max-time="{{ event.max_time_between_events }}">
+        <div class="event-card" data-event-id="{{ event.id }}" data-event-start="{% if event.start_time %}{{ event.start_time.isoformat }}{% endif %}" data-event-end="{% if event.end_time %}{{ event.end_time.isoformat }}{% endif %}" data-default-duration="{{ event.default_duration }}" data-min-duration="{{ event.min_duration }}" data-max-duration="{{ event.max_duration }}" data-min-time="{{ event.min_time_between_events }}" data-max-time="{{ event.max_time_between_events }}">
             <span class="delete-icon" data-action="delete" title="Delete event">🗑️</span>
             <span class="settings-icon" data-action="settings" title="Event settings">⚙️</span>
             <div class="event-title">{{ event.title }}</div>
@@ -94,6 +139,9 @@
         <div class="events-empty">No events yet. Click "Add Event" to create your first one.</div>
         {% endif %}
     </div>
+    </div>
+    </div>
+
 </div>
 
 <!-- Event Settings Modal -->
@@ -145,9 +193,14 @@
             </div>
             <div class="form-group">
                 <label>Time Ago</label>
-                <input type="text" name="time_ago" id="eventTimeInput" placeholder="Leave blank for now, or e.g. 1h30m, 2h, 45m">
+                <input type="text" name="time_ago" id="eventTimeInput" placeholder="e.g. 1h30m, 2h, 45m — or leave blank for now">
                 <input type="hidden" name="date" id="eventDateHidden">
-                <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Examples: blank = now, 1h = 1 hour ago, 1h30m = 1 hour 30 min ago, 2d = 2 days ago</small>
+                <input type="hidden" name="pending" id="eventPendingHidden" value="">
+                <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">Examples: blank = now, 1h = 1 hour ago, 2d = 2 days ago</small>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="eventPending" style="width:auto;margin:0;">
+                <label for="eventPending" style="font-weight:normal;margin:0;font-size:.9rem;">Add as <strong>Pending</strong> — no start time yet</label>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').classList.remove('active')">Cancel</button>
@@ -185,6 +238,7 @@ function parseTimeOffsetMs(input) {
     };
     document.querySelectorAll('[data-date-display]').forEach(el => {
         const card = el.closest('.event-card');
+        if (!card || !card.dataset.eventStart) return;
         const startDate = new Date(card.dataset.eventStart);
         let text = 'Start: ' + startDate.toLocaleString('en-US', dateOpts);
         if (card.dataset.eventEnd) {
@@ -245,6 +299,7 @@ function parseTimeOffsetMs(input) {
             const eventId = card.dataset.eventId;
             const startActions = document.getElementById('startActions' + eventId);
             const endActions = document.getElementById('endActions' + eventId);
+            if (!card.dataset.eventStart) { el.textContent = ''; return; }
             const startMs = new Date(card.dataset.eventStart).getTime();
             const hasEnd = !!card.dataset.eventEnd;
             const endMs = hasEnd ? new Date(card.dataset.eventEnd).getTime() : 0;
@@ -337,7 +392,7 @@ function sendUpdate(eventId, action) {
         body.end_datetime = endDate.toISOString();
     }
 
-    fetch('/do_again/event/' + eventId + '/update/', {
+    fetch('/do_again/api/events/' + eventId + '/update/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',
@@ -363,17 +418,23 @@ function sendUpdate(eventId, action) {
     });
 }
 
-// Attach card action handlers via event delegation (avoids Django template tags in onclick)
-document.getElementById('eventsList').addEventListener('click', function(e) {
-    const card = e.target.closest('.event-card');
-    if (!card) return;
-    const eventId = card.dataset.eventId;
-    const action = e.target.dataset.action;
-    if (action === 'delete') deleteEvent(eventId);
-    else if (action === 'settings') openSettingsModal(eventId);
-    else if (action === 'start') startEvent(eventId);
-    else if (action === 'end') endEvent(eventId);
-});
+// Attach card action handlers via event delegation
+function attachCardDelegation(containerId, cardSelector) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.addEventListener('click', function(e) {
+        const card = e.target.closest(cardSelector);
+        if (!card) return;
+        const eventId = card.dataset.eventId;
+        const action = e.target.dataset.action;
+        if (action === 'delete') deleteEvent(eventId);
+        else if (action === 'settings') openSettingsModal(eventId);
+        else if (action === 'start') startEvent(eventId);
+        else if (action === 'end') endEvent(eventId);
+    });
+}
+attachCardDelegation('eventsList', '.event-card');
+attachCardDelegation('pendingList', '.pending-card');
 
 function startEvent(eventId) {
     sendUpdate(eventId, 'start');
@@ -388,7 +449,7 @@ function deleteEvent(eventId) {
         return;
     }
     
-    fetch('/do_again/event/' + eventId + '/delete/', {
+    fetch('/do_again/api/events/' + eventId + '/delete/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',
@@ -432,18 +493,21 @@ function parseTimeOffset(input) {
     return new Date(now - totalMs);
 }
 
-function handleEventSubmit(event) {
-    event.preventDefault();
-    
-    const timeInput = document.getElementById('eventTimeInput').value;
-    const calculatedDate = parseTimeOffset(timeInput);
-    
-    // Format for Django: ISO format
-    const dateHidden = document.getElementById('eventDateHidden');
-    dateHidden.value = calculatedDate.toISOString();
-    
-    // Submit the form
-    event.target.submit();
+function handleEventSubmit(e) {
+    e.preventDefault();
+
+    const isPending = document.getElementById('eventPending').checked;
+    document.getElementById('eventPendingHidden').value = isPending ? 'true' : '';
+
+    if (!isPending) {
+        const timeInput = document.getElementById('eventTimeInput').value;
+        const calculatedDate = parseTimeOffset(timeInput);
+        document.getElementById('eventDateHidden').value = calculatedDate.toISOString();
+    } else {
+        document.getElementById('eventDateHidden').value = '';
+    }
+
+    e.target.submit();
     return false;
 }
 
@@ -470,7 +534,7 @@ function saveSettings() {
         max_time_between_events: document.getElementById('settingsMaxTime').value.trim(),
     };
 
-    fetch('/do_again/event/' + eventId + '/settings/', {
+    fetch('/do_again/api/events/' + eventId + '/settings/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}',
