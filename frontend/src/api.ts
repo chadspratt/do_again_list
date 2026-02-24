@@ -35,8 +35,14 @@ export async function fetchEvents(): Promise<DoAgainEvent[]> {
   return res.json();
 }
 
-export async function createEvent(title: string, date: string, pending?: boolean): Promise<ApiResponse> {
-  return apiPost(`${API_BASE}/events/create/`, pending ? { title, pending: true } : { title, date });
+export async function createEvent(title: string, date: string, pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
+  const body: Record<string, unknown> = { title, repeats };
+  if (pending) {
+    body.pending = true;
+  } else {
+    body.date = date;
+  }
+  return apiPost(`${API_BASE}/events/create/`, body);
 }
 
 export async function updateEvent(

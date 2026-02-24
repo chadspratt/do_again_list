@@ -59,6 +59,7 @@ def api_events(request):
             'min_time_between_events': e.min_time_between_events,
             'max_time_between_events': e.max_time_between_events,
             'value': e.value,
+            'repeats': e.repeats,
         }
         for e in events
     ]
@@ -74,13 +75,14 @@ def api_create_event(request):
         if not title:
             return JsonResponse({'success': False, 'error': 'Title is required.'})
         pending = data.get('pending', False)
+        repeats = data.get('repeats', True)
         date_str = data.get('date', '').strip()
         if pending or not date_str:
-            event = PastEvents.objects.create(title=title)
+            event = PastEvents.objects.create(title=title, repeats=repeats)
         else:
             from dateutil import parser
             event_date = parser.isoparse(date_str)
-            event = PastEvents.objects.create(title=title, start_time=event_date)
+            event = PastEvents.objects.create(title=title, start_time=event_date, repeats=repeats)
 
         # Game reward: +1 base attack for creating an event type
         state = _get_game_state()
@@ -289,6 +291,9 @@ def api_update_event_settings(request, event_id):
         if 'value' in data:
             event.value = float(data['value'])
             fields.append('value')
+        if 'repeats' in data:
+            event.repeats = bool(data['repeats'])
+            fields.append('repeats')
         if fields:
             event.save(update_fields=fields)
 

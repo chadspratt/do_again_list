@@ -14,6 +14,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
   const [minTime, setMinTime] = useState('');
   const [maxTime, setMaxTime] = useState('');
   const [value, setValue] = useState(1.0);
+  const [repeats, setRepeats] = useState(true);
 
   useEffect(() => {
     if (event) {
@@ -23,6 +24,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
       setMinTime(event.min_time_between_events || '');
       setMaxTime(event.max_time_between_events || '');
       setValue(event.value ?? 1.0);
+      setRepeats(event.repeats ?? true);
     }
   }, [event]);
 
@@ -37,6 +39,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
       min_time_between_events: minTime,
       max_time_between_events: maxTime,
       value,
+      repeats,
     });
   }
 
@@ -132,6 +135,19 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
           <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
             Importance or difficulty of this event. Displayed on the tile.
           </small>
+        </div>
+
+        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            id="repeatsCheckbox"
+            checked={repeats}
+            onChange={(e) => setRepeats(e.target.checked)}
+            style={{ width: 'auto', margin: 0 }}
+          />
+          <label htmlFor="repeatsCheckbox" style={{ fontWeight: 'normal', margin: 0, fontSize: '.9rem' }}>
+            <strong>Repeats</strong> — uncheck for one-time events
+          </label>
         </div>
 
         <div className="form-actions">

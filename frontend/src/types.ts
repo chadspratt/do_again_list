@@ -9,6 +9,7 @@ export interface DoAgainEvent {
   min_time_between_events: string;
   max_time_between_events: string;
   value: number;
+  repeats: boolean;
 }
 
 export interface EventSettings {
@@ -18,6 +19,7 @@ export interface EventSettings {
   min_time_between_events: string;
   max_time_between_events: string;
   value: number;
+  repeats: boolean;
 }
 
 export interface GameState {
