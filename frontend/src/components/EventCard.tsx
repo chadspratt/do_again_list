@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { DoAgainEvent } from '../types';
 import { computeTimerText, parseTimeOffset, parseTimeOffsetMs } from '../utils';
 
@@ -24,6 +24,21 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
   const [nextInput, setNextInput] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
+  const [wrapperHeight, setWrapperHeight] = useState<number | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  function handleMouseEnter() {
+    if (wrapperRef.current) {
+      setWrapperHeight(wrapperRef.current.offsetHeight);
+    }
+    setIsHovered(true);
+  }
+
+  function handleMouseLeave() {
+    setIsHovered(false);
+    setWrapperHeight(null);
+  }
 
   const hasMin = event.min_time_between_events.trim() !== '';
   const hasMax = event.max_time_between_events.trim() !== '';
@@ -97,7 +112,17 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
   }
 
   return (
-    <div className={`event-card${cardKind ? ' ' + cardKind : ''}`} data-event-id={dataEventId}>
+    <div
+      className="event-card-wrapper"
+      ref={wrapperRef}
+      data-event-id={dataEventId}
+      style={wrapperHeight !== null ? { minHeight: wrapperHeight } : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+    <div
+      className={`event-card${cardKind ? ' ' + cardKind : ''}${isHovered ? ' hovered' : ''}`}
+    >
       {event.value !== undefined && event.value !== 1.0 && (
         <span className="event-value-badge" title={`Value: ${event.value}`}>
           ×{event.value}
@@ -115,53 +140,58 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       </div>
       <div className="event-timer">{timerText}</div>
 
-    { event.end_time &&
-        <div className="event-actions">
-            <input
-            type="text"
-            placeholder="start e.g. 1h30m"
-            value={startInput}
-            onChange={(e) => setStartInput(e.target.value)}
-            />
-            <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
-            Start
-            </button>
-        </div>
-    }
+    {isHovered && (
+      <>
+        { event.end_time &&
+            <div className="event-actions">
+                <input
+                type="text"
+                placeholder="start e.g. 1h30m"
+                value={startInput}
+                onChange={(e) => setStartInput(e.target.value)}
+                />
+                <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
+                Start
+                </button>
+            </div>
+        }
 
-    <div className="event-actions" style={{ marginTop: '6px' }}>
-        <input
-        type="text"
-        placeholder="end e.g. 1h30m"
-        value={endInput}
-        onChange={(e) => setEndInput(e.target.value)}
-        />
-        <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
-        End
-        </button>
-    </div>
-
-    { event.end_time &&
         <div className="event-actions" style={{ marginTop: '6px' }}>
             <input
             type="text"
-            placeholder="next e.g. 2d"
-            value={nextInput}
-            onChange={(e) => setNextInput(e.target.value)}
+            placeholder="end e.g. 1h30m"
+            value={endInput}
+            onChange={(e) => setEndInput(e.target.value)}
             />
-            <button className="btn btn-secondary btn-sm" onClick={() => {
-                const nextTime = nextInput.trim()
-                    ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
-                    : undefined;
-                if (nextTime) {
-                    onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
-                    setNextInput('');
-                }
-            }} title="Set next time">
-            Next
+            <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
+            End
             </button>
         </div>
-    }
+
+        { event.end_time &&
+            <div className="event-actions" style={{ marginTop: '6px' }}>
+                <input
+                type="text"
+                placeholder="next e.g. 2d"
+                value={nextInput}
+                onChange={(e) => setNextInput(e.target.value)}
+                />
+                <button className="btn btn-secondary btn-sm" onClick={() => {
+                    const nextTime = nextInput.trim()
+                        ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+                        : undefined;
+                    if (nextTime) {
+                        onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
+                        setNextInput('');
+                    }
+                }} title="Set next time">
+                Next
+                </button>
+            </div>
+        }
+      </>
+    )}
+    </div>
     </div>
   );
 }

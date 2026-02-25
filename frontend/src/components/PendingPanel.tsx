@@ -23,6 +23,7 @@ function PendingCard({
   const [startInput, setStartInput] = useState('');
   const [endInput, setEndInput] = useState('');
   const [nextInput, setNextInput] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
 
   function handleStart() {
     const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
@@ -49,45 +50,53 @@ function PendingCard({
   }
 
   return (
-    <div className="pending-card">
+    <div
+      className="pending-card"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
       <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
       <div className="event-title">{event.title}</div>
-      <div className="pending-actions">
-        <input
-          type="text"
-          placeholder="e.g. 1h30m"
-          value={startInput}
-          onChange={(e) => setStartInput(e.target.value)}
-        />
-        <button className="btn btn-success btn-sm" onClick={handleStart}>Start</button>
-      </div>
-      <div className="pending-actions" style={{ marginTop: '6px' }}>
-        <input
-          type="text"
-          placeholder="e.g. 1h30m"
-          value={endInput}
-          onChange={(e) => setEndInput(e.target.value)}
-        />
-        <button className="btn btn-primary btn-sm" onClick={handleEnd}>End</button>
-      </div>
-      <div className="pending-actions" style={{ marginTop: '6px' }}>
-        <input
-          type="text"
-          placeholder="next e.g. 2d"
-          value={nextInput}
-          onChange={(e) => setNextInput(e.target.value)}
-        />
-        <button className="btn btn-secondary btn-sm" onClick={() => {
-          const nextTime = nextInput.trim()
-            ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
-            : undefined;
-          if (nextTime) {
-            onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
-            setNextInput('');
-          }
-        }}>Next</button>
-      </div>
+      {isHovered && (
+        <div className="card-hover-actions">
+          <div className="pending-actions">
+            <input
+              type="text"
+              placeholder="e.g. 1h30m"
+              value={startInput}
+              onChange={(e) => setStartInput(e.target.value)}
+            />
+            <button className="btn btn-success btn-sm" onClick={handleStart}>Start</button>
+          </div>
+          <div className="pending-actions" style={{ marginTop: '6px' }}>
+            <input
+              type="text"
+              placeholder="e.g. 1h30m"
+              value={endInput}
+              onChange={(e) => setEndInput(e.target.value)}
+            />
+            <button className="btn btn-primary btn-sm" onClick={handleEnd}>End</button>
+          </div>
+          <div className="pending-actions" style={{ marginTop: '6px' }}>
+            <input
+              type="text"
+              placeholder="next e.g. 2d"
+              value={nextInput}
+              onChange={(e) => setNextInput(e.target.value)}
+            />
+            <button className="btn btn-secondary btn-sm" onClick={() => {
+              const nextTime = nextInput.trim()
+                ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+                : undefined;
+              if (nextTime) {
+                onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
+                setNextInput('');
+              }
+            }}>Next</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
