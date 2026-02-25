@@ -78,6 +78,15 @@ function PendingCard({
           value={nextInput}
           onChange={(e) => setNextInput(e.target.value)}
         />
+        <button className="btn btn-secondary btn-sm" onClick={() => {
+          const nextTime = nextInput.trim()
+            ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+            : undefined;
+          if (nextTime) {
+            onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
+            setNextInput('');
+          }
+        }}>Next</button>
       </div>
     </div>
   );
