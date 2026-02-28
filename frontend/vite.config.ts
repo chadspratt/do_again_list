@@ -5,7 +5,7 @@ export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'build' ? '/static/do_again_list/' : '/',
   build: {
-    outDir: '../static/do_again_list',
+    outDir: '../do_again_list/static/do_again_list',
     emptyOutDir: true,
     rollupOptions: {
       output: {

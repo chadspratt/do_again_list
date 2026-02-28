@@ -1,6 +1,6 @@
 *.pyc
 __pycache__/
 *.tsbuildinfo
-package-lock.json
 do_again_list/static/do_again_list/assets
 node_modules/
+**/db.sqlite3
