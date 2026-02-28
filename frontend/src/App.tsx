@@ -6,8 +6,13 @@ import {
   deleteEvent,
   updateEventSettings,
   fetchGameState,
+  fetchAuthUser,
+  authRegister,
+  authLogin,
+  authLogout,
 } from './api';
 import type { DoAgainEvent, EventSettings, GameState } from './types';
+import type { AuthUser } from './api';
 import { Header } from './components/Header';
 import { EventGrid } from './components/EventGrid';
 import { NewEventModal } from './components/NewEventModal';
@@ -27,6 +32,7 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [sortMode, setSortMode] = useState<'default' | 'due'>('default');
   const battleLaneRef = useRef<BattleLaneHandle>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   // One-time (repeats === false) takes priority over pending for panel assignment
   const oneTimeEvents = events.filter(e => !e.repeats);
@@ -57,6 +63,7 @@ export default function App() {
   useEffect(() => {
     loadEvents();
     loadGameState();
+    fetchAuthUser().then(setUser);
   }, [loadEvents, loadGameState]);
 
   // Tick every second to update timers
@@ -163,6 +170,29 @@ export default function App() {
     [],
   );
 
+  const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
+    const res = await authLogin(username, password);
+    if (res.success && res.user) {
+      setUser(res.user);
+      return null;
+    }
+    return res.error || 'Login failed.';
+  }, []);
+
+  const handleRegister = useCallback(async (username: string, password: string): Promise<string | null> => {
+    const res = await authRegister(username, password);
+    if (res.success && res.user) {
+      setUser(res.user);
+      return null;
+    }
+    return res.error || 'Registration failed.';
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    await authLogout();
+    setUser(null);
+  }, []);
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -173,6 +203,10 @@ export default function App() {
         onAddClick={() => setShowNewModal(true)}
         sortMode={sortMode}
         onSortToggle={() => setSortMode(m => m === 'default' ? 'due' : 'default')}
+        user={user}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
       />
       {gameState && (
         <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />

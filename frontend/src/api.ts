@@ -80,3 +80,33 @@ export async function syncBattleState(gold: number, xp: number, streak: number, 
   const res = await apiPost(`${API_BASE}/game/sync/`, { gold, xp, streak, hero_hp: heroHp });
   return res.game!;
 }
+
+// ─── Auth ────────────────────────────────────────────────────────────
+
+export interface AuthUser {
+  username: string;
+}
+
+interface AuthResponse {
+  success?: boolean;
+  error?: string;
+  user?: AuthUser | null;
+}
+
+export async function fetchAuthUser(): Promise<AuthUser | null> {
+  const res = await fetch(`${API_BASE}/auth/user/`);
+  const data: AuthResponse = await res.json();
+  return data.user ?? null;
+}
+
+export async function authRegister(username: string, password: string): Promise<AuthResponse> {
+  return apiPost(`${API_BASE}/auth/register/`, { username, password }) as Promise<AuthResponse>;
+}
+
+export async function authLogin(username: string, password: string): Promise<AuthResponse> {
+  return apiPost(`${API_BASE}/auth/login/`, { username, password }) as Promise<AuthResponse>;
+}
+
+export async function authLogout(): Promise<AuthResponse> {
+  return apiPost(`${API_BASE}/auth/logout/`, {}) as Promise<AuthResponse>;
+}

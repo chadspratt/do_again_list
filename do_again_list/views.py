@@ -1,5 +1,7 @@
 import json
 
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -180,7 +182,7 @@ def api_update_event(request, event_id):
         # Timing compliance (only meaningful when we have a previous end_time)
         if use_next_time_override:
             # next_time is an absolute deadline — did the user act before it?
-            acted_before_deadline = timezone.now() <= old_next_time
+            acted_before_deadline = timezone.now() <= old_next_time # type: ignore
             min_ok = True  # next_time doesn't impose a minimum
             max_ok = acted_before_deadline
         else:
@@ -364,4 +366,61 @@ def api_sync_battle(request):
         return JsonResponse({'success': True, 'game': _game_state_dict(state)})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+# ─── Auth ────────────────────────────────────────────────────────────────────
+
+@ensure_csrf_cookie
+@require_GET
+def api_auth_user(request):
+    """Return the current user, or null if anonymous."""
+    if request.user.is_authenticated:
+        return JsonResponse({'user': {'username': request.user.username}})
+    return JsonResponse({'user': None})
+
+
+@ensure_csrf_cookie
+@require_POST
+def api_auth_register(request):
+    """Create a new user account and log in."""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        if not username or not password:
+            return JsonResponse({'success': False, 'error': 'Username and password are required.'})
+        if len(password) < 4:
+            return JsonResponse({'success': False, 'error': 'Password must be at least 4 characters.'})
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'success': False, 'error': 'Username already taken.'})
+        user = User.objects.create_user(username=username, password=password)
+        login(request, user)
+        return JsonResponse({'success': True, 'user': {'username': user.username}})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@ensure_csrf_cookie
+@require_POST
+def api_auth_login(request):
+    """Log in with username/password."""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            return JsonResponse({'success': False, 'error': 'Invalid username or password.'})
+        login(request, user)
+        return JsonResponse({'success': True, 'user': {'username': user.username}})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@ensure_csrf_cookie
+@require_POST
+def api_auth_logout(request):
+    """Log out the current user."""
+    logout(request)
+    return JsonResponse({'success': True})
 
