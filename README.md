@@ -75,3 +75,21 @@ do-again-list = { path = "./do-again-list", editable = true }
 ```
 
 Recommendations for `my-integrated-project/Dockerfile` are available upon request.
+
+
+## Recommendations
+
+### Easy
+- Make `PastEvents` model singular (e.g. `PastEvent`)
+- remove explicit definition of `id` fields in models (django always provides an `id` column with sensible defaults)
+- remove explicit definition of `db_table`
+- switch to service architecture for mutating models (`models.GameState` -> `services.GameStateService.add_xp(game_state, amount)`)
+- switch to using standard library date parsing (rather than having shadow `dateutil` dependency)
+- Defer user registration/auth to project (not app level concern)
+- remove unused `do_again_list/templates/do_again_list/dashboard.html`
+
+### Harder
+- Decouple service and view (e.g. `views.api_update_event` needs to be at least two layers: view and controller)
+- Adopt more formal API patterns using [Django Rest Framework](https://www.django-rest-framework.org/)
+  - Easier serialization (avoids much boilerplate like `views.api_update_event_settings`)
+  - Standard viewsets reduce boilerplate, ensure standard behavior
