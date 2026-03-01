@@ -1,0 +1,9 @@
+# This file tells the build system which _non-source code_ files to include
+#  in the package. It is necessary.
+
+# Text files
+include README.md
+
+#  templates
+recursive-include do_again_list/templates *
+recursive-include do_again_list/static *
