@@ -31,6 +31,8 @@ classifiers = [
 dependencies = [
     "django>=5.0.0",
     "django-appconf>=1.2.0",
+    "djangorestframework>=3.16.1",
+    "django-filter>=25.2",
 ]
 
 
@@ -39,6 +41,7 @@ repository = "https://github.com/chadspratt/do_again_list"
 
 [dependency-groups]
 dev = [
+    "drf-spectacular>=0.29.0",
     "django-cors-headers>=4.9.0",
     "ruff>=0.15.1",
     "pytest>=8.2.2",
@@ -46,6 +49,7 @@ dev = [
     "pytest-django>=4.8.0",
     "tox>=4.11.3",
     "django-stubs>=5.2.9",
+    "djangorestframework-stubs>=3.16.8",
     "ty>=0.0.18",
 ]
 

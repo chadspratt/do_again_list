@@ -18,7 +18,23 @@ from django.contrib import admin
 from django.urls import include, path
 from do_again_list import urls as do_again_urls
 
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # vanilla django views based API
     path("do_again/", include(do_again_urls, namespace="do_again")),
+    # DRF based REST API
+    path("api/do-again/", include(do_again_urls.router.urls)),
+    # API docs
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
 ]

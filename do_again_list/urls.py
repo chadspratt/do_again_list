@@ -1,8 +1,13 @@
 from django.urls import path
-
+from rest_framework import routers
 from . import views
 
 app_name = "do_again"
+
+router = routers.SimpleRouter()
+router.register(r"activities", views.ActivityViewSet)
+router.register(r"occurances", views.OccuranceViewSet)
+router.register(r"game", views.GameStateViewSet)
 
 urlpatterns = [
     path("", views.index, name="do_again_index"),
