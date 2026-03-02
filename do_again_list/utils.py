@@ -2,25 +2,27 @@ import re
 import datetime
 
 
-def parse_time_offset_ms(value: str) -> int:
+def parse_time_offset_ms(value: str) -> float:
     """Parse a time offset string like '1d5h30m' into milliseconds.
     Returns 0 if blank or invalid.
     """
     if not value or not value.strip():
         return 0
     total = 0
-    day = re.search(r"(\d+)d", value)
-    hour = re.search(r"(\d+)h", value)
-    minute = re.search(r"(\d+)m", value)
-    sec = re.search(r"(\d+)s", value)
+    day = re.search(r"([\d\.]+)d", value)
+    hour = re.search(r"([\d\.]+)h", value)
+    minute = re.search(r"([\d\.]+)m", value)
+    sec = re.search(r"([\d\.]+)s", value)
     if day:
-        total += int(day.group(1)) * 24 * 60 * 60 * 1000
+        total += float(day.group(1)) * 24 * 60 * 60 * 1000
     if hour:
-        total += int(hour.group(1)) * 60 * 60 * 1000
+        total += float(hour.group(1)) * 60 * 60 * 1000
     if minute:
-        total += int(minute.group(1)) * 60 * 1000
+        print(f"minutes: {minute.group(1)}")
+        total += float(minute.group(1)) * 60 * 1000
     if sec:
-        total += int(sec.group(1)) * 1000
+        print(f"seconds: {sec.group(1)}")
+        total += float(sec.group(1)) * 1000
     return total
 
 
@@ -31,7 +33,7 @@ def parse_time_offset(value: str) -> datetime.timedelta | None:
     return datetime.timedelta(milliseconds=time_offset_ms)
 
 
-def humanize_seconds(seconds: int) -> str:
+def humanize_seconds(seconds: float) -> str:
     """
     deparse a number of seconds (less than one day) into a string like
     "23h59m59s"

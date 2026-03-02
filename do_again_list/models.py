@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.db.models.aggregates import Count
+from django.db.models.expressions import Case, Value, When
 
 
 class PastEvent(models.Model):
@@ -8,14 +10,13 @@ class PastEvent(models.Model):
         BAD = "bad"
         NEUTRAL = "neutral"
 
-    class Meta:
-        ordering = ["-end_time"]
+    class ActivityState(models.TextChoices):
+        PENDING = "pending"
+        ACTIVE = "active"
+        INACTIVE = "inactive"
 
     owner = models.ForeignKey(get_user_model(), on_delete=models.PROTECT)
     title = models.CharField(max_length=255)
-    start_time = models.DateTimeField(null=True, blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    next_time = models.DateTimeField(null=True, blank=True)
     ordering = models.IntegerField(default=0)
     default_duration = models.IntegerField(default=0)
     min_duration = models.CharField(max_length=50, blank=True, default="")
@@ -28,7 +29,17 @@ class PastEvent(models.Model):
     repeats = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.title} on {self.end_time}"
+        return f"{self.title} ({self.state})"
+
+    @property
+    def state(self) -> ActivityState:
+        if not self.history.filter(start_time__isnull=False).exists():
+            # at least one occurance has started
+            return self.__class__.ActivityState.PENDING
+        if self.history.filter(end_time__isnull=True).exists():
+            # at least one occurance has not been ended
+            return self.__class__.ActivityState.ACTIVE
+        return self.__class__.ActivityState.INACTIVE
 
     @property
     def moral_quality(self) -> MoralQuality:

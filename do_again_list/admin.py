@@ -5,11 +5,9 @@ from .models import HistoricalEvent, PastEvent
 
 @admin.register(PastEvent)
 class PastEventAdmin(admin.ModelAdmin):
-    list_display = ("title", "start_time", "ordering")
+    list_display = ("title", "ordering")
     list_editable = ("ordering",)
-    ordering = ("-start_time",)
     search_fields = ("title",)
-    date_hierarchy = "start_time"
 
 
 @admin.register(HistoricalEvent)

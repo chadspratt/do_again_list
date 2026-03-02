@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
+from rest_framework.request import Request
 
 from .models import GameState, HistoricalEvent, PastEvent
 from . import serializers, services
@@ -43,6 +44,8 @@ class PastEventFilter(filters.FilterSet):
 
 
 class ActivityViewSet(viewsets.ModelViewSet):
+    model = PastEvent
+    service_class = services.ActivityService
     queryset = PastEvent.objects.all()
     serializer_class = serializers.PastEventSerializer
     filterset_class = PastEventFilter
@@ -51,7 +54,36 @@ class ActivityViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return PastEvent.objects.filter(owner=user)
 
-    @extend_schema(responses={200: serializers.ActivityResponseSerializer})
+    def _generate_response_serializer(
+        self, *, game_effect: services.GameEffect | None
+    ) -> serializers.ActivityResponseSerializer:
+        if game_effect is None:
+            return serializers.ActivityResponseSerializer(data={"success": False})
+        game_state, _ = GameState.objects.get_or_create(owner=self.request.user)
+        game_state = services.GameStateService().update(
+            game_state=game_state, game_effect=game_effect
+        )
+        serializer = serializers.ActivityResponseSerializer(
+            data={
+                "game": serializers.GameStateSerializer(game_state),
+                "success": True,
+                "game_messages": game_effect.messages,
+                "spawn_enemy": serializers.SpawnEnemySerializer(
+                    game_effect.spawn_enemy
+                ),
+                "hero_buff": serializers.StatModifierSerializer(game_effect.hero_buff),
+                "pending_heal": game_effect.pending_heal,
+                "pending_fatigue": game_effect.pending_fatigue,
+            }
+        )
+        return serializer
+
+    @extend_schema(
+        responses={
+            200: serializers.ActivityResponseSerializer,
+            400: serializers.ErrorResponseSerializer,
+        }
+    )
     @action(
         detail=True,
         methods=["post"],
@@ -59,12 +91,18 @@ class ActivityViewSet(viewsets.ModelViewSet):
     )
     def start(self, request, pk):
         activity = get_object_or_404(PastEvent, id=pk)
+        if activity.state == PastEvent.ActivityState.ACTIVE:
+            serializer = serializers.ErrorResponseSerializer(
+                data={"success": False, "error": "Cannot start an active activity"}
+            )
+            return Response(serializer, status=400)
         serializer = serializers.ActivityActionSerializer(data=request.data)
         game_effect = services.ActivityService().start_activity(
             activity=activity, at_time=serializer.validated_data["at_time"]
         )
-        # TODO: process game effect into response (this can be done in common for all actions)
-        return Response({"success": True})
+        return Response(
+            self._generate_response_serializer(game_effect=game_effect), status=200
+        )
 
     @extend_schema(responses={200: serializers.ActivityResponseSerializer})
     @action(
@@ -73,8 +111,17 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def end(self, request, pk):
-        # TODO
-        return Response({"success": True})
+        activity = get_object_or_404(PastEvent, id=pk)
+        if activity.state != PastEvent.ActivityState.ACTIVE:
+            serializer = serializers.ErrorResponseSerializer(
+                data={"success": False, "error": "Cannot end a non-active activity"}
+            )
+            return Response(serializer, status=400)
+        serializer = serializers.ActivityActionSerializer(data=request.data)
+        game_effect = services.ActivityService().end_activity(
+            activity=activity, at_time=serializer.validated_data["at_time"]
+        )
+        return Response(self._generate_response_serializer(game_effect=game_effect))
 
     @extend_schema(responses={200: serializers.ActivityResponseSerializer})
     @action(
@@ -83,8 +130,20 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def set_next(self, request, pk):
-        # TODO
-        return Response({"success": True})
+        activity = get_object_or_404(PastEvent, id=pk)
+        if activity.state == PastEvent.ActivityState.ACTIVE:
+            serializer = serializers.ErrorResponseSerializer(
+                data={
+                    "success": False,
+                    "error": "Cannot set_next for an active activity",
+                }
+            )
+            return Response(serializer, status=400)
+        serializer = serializers.ActivityActionSerializer(data=request.data)
+        game_effect = services.ActivityService().set_next_activity(
+            activity=activity, at_time=serializer.validated_data["at_time"]
+        )
+        return Response(self._generate_response_serializer(game_effect=game_effect))
 
 
 class HistoricalEventFilter(filters.FilterSet):

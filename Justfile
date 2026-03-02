@@ -17,3 +17,6 @@ lint:
 
 typecheck:
     uv run ty check
+
+test PATH=".":
+    uv run pytest {{ PATH }}

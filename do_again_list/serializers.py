@@ -51,9 +51,30 @@ class ActivityActionSerializer(serializers.Serializer):
     at_time = serializers.DateTimeField()
 
 
+class StatModifierSerializer(serializers.Serializer):
+    attack = serializers.IntegerField(read_only=True)
+    defense = serializers.IntegerField(read_only=True)
+    speed = serializers.IntegerField(read_only=True)
+
+
+class SpawnEnemySerializer(serializers.Serializer):
+    level = serializers.IntegerField(read_only=True)
+    modifiers = StatModifierSerializer(read_only=True)
+
+
 class ActivityResponseSerializer(serializers.Serializer):
     # Success field isn't really necessary, should use HTTP return codes
     #  to indicate failures/success state
     success = serializers.BooleanField(read_only=True)
     error = serializers.CharField(read_only=True, allow_null=True)
-    game = GameStateSerializer(allow_null=True)
+    game = GameStateSerializer(allow_null=True, read_only=True)
+    messages = serializers.ListField(read_only=True, child=serializers.CharField())
+    spawn_enemy = SpawnEnemySerializer(read_only=True)
+    hero_buffs = StatModifierSerializer(read_only=True)
+    pending_heal = serializers.BooleanField(read_only=True)
+    pending_fatigue = serializers.BooleanField(read_only=True)
+
+
+class ErrorResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField(read_only=True)
+    error = serializers.CharField(read_only=True)

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from operator import ge, mod
 from do_again_list import models, serializers
 import datetime
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, field
 
 
 class Addable:
@@ -30,13 +29,13 @@ class GameStateDelta(Addable):
 
 
 @dataclass
-class Buff(Addable):
+class StatModifier(Addable):
     attack: int = 0
     defense: int = 0
     speed: int = 0
 
-    def times(self, scalar: int) -> Buff:
-        return Buff(
+    def times(self, scalar: int) -> StatModifier:
+        return StatModifier(
             attack=self.attack * scalar,
             defense=self.defense * scalar,
             speed=self.speed * scalar,
@@ -44,12 +43,21 @@ class Buff(Addable):
 
 
 @dataclass
+class SpawnEnemy:
+    level: int = 1
+    stat_modifier: StatModifier = field(default_factory=StatModifier)
+
+
+@dataclass
 class GameEffect(Addable):
-    game_state_delta: GameStateDelta = GameStateDelta()
+    game_state_delta: GameStateDelta = field(default_factory=GameStateDelta)
     gold: int = 0
-    enemy_buff: Buff = Buff()
-    hero_buff: Buff = Buff()
-    messages: list[str] = []
+    spawn_enemy: SpawnEnemy = field(default_factory=SpawnEnemy)
+    hero_buff: StatModifier = field(default_factory=StatModifier)
+    reset_streak: bool = False
+    messages: list[str] = field(default_factory=list)
+    pending_heal: bool = False
+    pending_fatigue: bool = False
 
 
 class ActivityService:
@@ -95,7 +103,7 @@ class ActivityService:
             # lots of possiblities for how to handle this.
             # TODO: how to handle this??
             # reset streak?
-            game_effect.game_state_delta.streak = 0
+            game_effect.reset_streak = True
 
         occurance.start_time = at_time
         occurance.save()
@@ -114,7 +122,7 @@ class ActivityService:
         if occurance is None:
             # A task was ended which was never started!
             # TODO: determine penalty
-            game_effect.game_state_delta.streak = 0
+            game_effect.reset_streak = True
             game_effect.messages.append(f"Activity {activity} was never started!")
             return game_effect
         occurance.end_time = at_time
@@ -139,7 +147,7 @@ class ActivityService:
                 or time_since_last_occurance >= activity.min_duration_between_events
             )
 
-        buff = Buff()
+        buff = StatModifier()
         label = ""
         if activity.moral_quality == models.PastEvent.MoralQuality.GOOD:
             if max_ok:
@@ -180,11 +188,32 @@ class ActivityService:
                 )
 
         game_effect.hero_buff = game_effect.hero_buff + buff
-        game_effect.enemy_buff = game_effect.hero_buff + buff.times(-1)
+        game_effect.spawn_enemy.stat_modifier = buff.times(-1)
 
         return game_effect
 
     def set_next_activity(
         self, *, activity: models.PastEvent, at_time: datetime.datetime
-    ):
-        return GameEffect()
+    ) -> GameEffect:
+        game_effect = GameEffect()
+        try:
+            occurance = models.HistoricalEvent.objects.get(
+                past_event=activity, end_time=None
+            )
+        except models.HistoricalEvent.DoesNotExist:
+            occurance = models.HistoricalEvent.objects.create(
+                past_event=activity, next_time=at_time
+            )
+        else:
+            # There shouldn't be an open occurrance right now.
+            game_effect.reset_streak = True
+            return game_effect
+        return game_effect
+
+
+class GameStateService:
+    def update(
+        self, *, game_state: models.GameState, game_effect: GameEffect
+    ) -> models.GameState:
+        # TODO: do updates
+        return game_state
