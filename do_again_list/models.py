@@ -33,10 +33,10 @@ class Activity(models.Model):
 
     @property
     def state(self) -> ActivityState:
-        if not self.history.filter(start_time__isnull=False).exists():
+        if not self.occurances.filter(start_time__isnull=False).exists():
             # at least one occurance has started
             return self.__class__.ActivityState.PENDING
-        if self.history.filter(end_time__isnull=True).exists():
+        if self.occurances.filter(end_time__isnull=True).exists():
             # at least one occurance has not been ended
             return self.__class__.ActivityState.ACTIVE
         return self.__class__.ActivityState.INACTIVE
@@ -65,7 +65,7 @@ class Occurance(models.Model):
         ]
 
     activity = models.ForeignKey(
-        Activity, on_delete=models.CASCADE, related_name="history"
+        Activity, on_delete=models.CASCADE, related_name="occurances"
     )
     next_time = models.DateTimeField(null=True, blank=True)
     start_time = models.DateTimeField(null=True, blank=True)

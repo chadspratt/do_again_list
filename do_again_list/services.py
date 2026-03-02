@@ -22,7 +22,6 @@ class GameStateDelta(Addable):
     base_attack: int = 0
     base_defense: int = 0
     base_speed: int = 0
-    best_distance: int = 0
     streak: int = 0
     hero_hp: int = 0
     # items: list[Item] = []
@@ -60,6 +59,10 @@ class GameEffect(Addable):
     pending_fatigue: bool = False
 
 
+class ActivityLifecycleException(Exception):
+    pass
+
+
 class ActivityService:
     def create(self, data: serializers.ActivitySerializer) -> GameEffect:
         instance = data.save()
@@ -78,12 +81,6 @@ class ActivityService:
     def start_activity(
         self, *, activity: models.Activity, at_time: datetime.datetime
     ) -> GameEffect:
-        # Look for open Occurances
-        # - may have been pre-created by a `set_next`
-        # - may have already been started (possibly bad state if user didn't end an activity)
-        #   - ?? debounce by updating
-        #   - ?? raise because of bad state?
-        # - may not exist at all
         game_effect = GameEffect()
         created = False
         try:
@@ -95,13 +92,8 @@ class ActivityService:
             )
         if not created and occurance.start_time:
             # this occurrance already existed with a start time
-            # - could be a repeated request (ignore if start time within certain
-            #    proximity to existing start time)
-            # - could be the player forgot to stop an activity (penalize?)
-            # lots of possiblities for how to handle this.
-            # TODO: how to handle this??
-            # reset streak?
-            game_effect.reset_streak = True
+            # Checks at the view level should prevent this
+            raise ActivityLifecycleException("Cannot start an active activity")
 
         occurance.start_time = at_time
         occurance.save()
@@ -119,10 +111,7 @@ class ActivityService:
         ).first()
         if occurance is None:
             # A task was ended which was never started!
-            # TODO: determine penalty
-            game_effect.reset_streak = True
-            game_effect.messages.append(f"Activity {activity} was never started!")
-            return game_effect
+            raise ActivityLifecycleException("Cannot end an inactive activity")
         occurance.end_time = at_time
         occurance.save()
 
@@ -202,6 +191,9 @@ class ActivityService:
             )
         else:
             # There shouldn't be an open occurrance right now.
+            raise ActivityLifecycleException(
+                "Cannot set next time for an active activity"
+            )
             game_effect.reset_streak = True
             return game_effect
         return game_effect
@@ -211,5 +203,13 @@ class GameStateService:
     def update(
         self, *, game_state: models.GameState, game_effect: GameEffect
     ) -> models.GameState:
-        # TODO: do updates
+        for field in models.GameState._meta.get_fields():
+            try:
+                delta = getattr(game_effect.game_state_delta, field.name)
+            except AttributeError:
+                continue
+            setattr(game_state, field.name, getattr(game_state, field.name) + delta)
+        if game_effect.reset_streak:
+            game_state.streak = 0
+        game_state.save()
         return game_state
