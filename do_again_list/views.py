@@ -11,7 +11,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 from rest_framework.request import Request
 
-from .models import GameState, HistoricalEvent, PastEvent
+from .models import GameState, Occurance, Activity
 from . import serializers, services
 from rest_framework import viewsets, mixins
 from django_filters import rest_framework as filters
@@ -22,7 +22,7 @@ from rest_framework.response import Response
 # === Django Rest Framework Viewsets ===
 
 
-class PastEventFilter(filters.FilterSet):
+class ActivityFilter(filters.FilterSet):
     """
     These can be refined a lot more, but first we should sort out the types
     and naming
@@ -30,7 +30,7 @@ class PastEventFilter(filters.FilterSet):
     """
 
     class Meta:
-        model = PastEvent
+        model = Activity
         fields = [
             "title",
             "default_duration",
@@ -44,15 +44,15 @@ class PastEventFilter(filters.FilterSet):
 
 
 class ActivityViewSet(viewsets.ModelViewSet):
-    model = PastEvent
+    model = Activity
     service_class = services.ActivityService
-    queryset = PastEvent.objects.all()
-    serializer_class = serializers.PastEventSerializer
-    filterset_class = PastEventFilter
+    queryset = Activity.objects.all()
+    serializer_class = serializers.ActivitySerializer
+    filterset_class = ActivityFilter
 
     def get_queryset(self):
         user = self.request.user
-        return PastEvent.objects.filter(owner=user)
+        return Activity.objects.filter(owner=user)
 
     def _generate_response_serializer(
         self, *, game_effect: services.GameEffect | None
@@ -90,8 +90,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def start(self, request, pk):
-        activity = get_object_or_404(PastEvent, id=pk)
-        if activity.state == PastEvent.ActivityState.ACTIVE:
+        activity = get_object_or_404(Activity, id=pk)
+        if activity.state == Activity.ActivityState.ACTIVE:
             serializer = serializers.ErrorResponseSerializer(
                 data={"success": False, "error": "Cannot start an active activity"}
             )
@@ -111,8 +111,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def end(self, request, pk):
-        activity = get_object_or_404(PastEvent, id=pk)
-        if activity.state != PastEvent.ActivityState.ACTIVE:
+        activity = get_object_or_404(Activity, id=pk)
+        if activity.state != Activity.ActivityState.ACTIVE:
             serializer = serializers.ErrorResponseSerializer(
                 data={"success": False, "error": "Cannot end a non-active activity"}
             )
@@ -130,8 +130,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def set_next(self, request, pk):
-        activity = get_object_or_404(PastEvent, id=pk)
-        if activity.state == PastEvent.ActivityState.ACTIVE:
+        activity = get_object_or_404(Activity, id=pk)
+        if activity.state == Activity.ActivityState.ACTIVE:
             serializer = serializers.ErrorResponseSerializer(
                 data={
                     "success": False,
@@ -146,20 +146,20 @@ class ActivityViewSet(viewsets.ModelViewSet):
         return Response(self._generate_response_serializer(game_effect=game_effect))
 
 
-class HistoricalEventFilter(filters.FilterSet):
+class OccuranceFilter(filters.FilterSet):
     class Meta:
-        model = HistoricalEvent
-        fields = ["past_event", "start_time", "end_time"]
+        model = Occurance
+        fields = ["activity", "start_time", "end_time"]
 
 
 class OccuranceViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = HistoricalEvent.objects.all()
-    serializer_class = serializers.HistoricalEventSerializer
-    filterset_class = HistoricalEventFilter
+    queryset = Occurance.objects.all()
+    serializer_class = serializers.OccuranceSerializer
+    filterset_class = OccuranceFilter
 
     def get_queryset(self):
         user = self.request.user
-        return HistoricalEvent.objects.filter(past_event__owner=user)
+        return Occurance.objects.filter(activity__owner=user)
 
 
 class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -205,7 +205,7 @@ def index(request):
 @require_GET
 def api_events(request):
     """Return all events as JSON."""
-    events = PastEvent.objects.order_by(F("end_time").desc(nulls_first=True))
+    events = Activity.objects.order_by(F("end_time").desc(nulls_first=True))
     data = [
         {
             "id": e.id,
@@ -238,12 +238,12 @@ def api_create_event(request):
         repeats = data.get("repeats", True)
         date_str = data.get("date", "").strip()
         if pending or not date_str:
-            event = PastEvent.objects.create(title=title, repeats=repeats)
+            event = Activity.objects.create(title=title, repeats=repeats)
         else:
             from dateutil import parser
 
             event_date = parser.isoparse(date_str)
-            event = PastEvent.objects.create(
+            event = Activity.objects.create(
                 title=title, start_time=event_date, repeats=repeats
             )
 
@@ -264,7 +264,7 @@ def api_update_event(request, event_id):
     """Update an event's times. Supports 'start', 'end', and 'set_next' actions."""
     try:
         data = json.loads(request.body)
-        event = get_object_or_404(PastEvent, id=event_id)
+        event = get_object_or_404(Activity, id=event_id)
         action = data.get("action", "end")
 
         from dateutil import parser as dt_parser
@@ -290,8 +290,8 @@ def api_update_event(request, event_id):
             ms_since_last_event = (
                 timezone.now() - event.end_time
             ).total_seconds() * 1000
-            HistoricalEvent.objects.create(
-                past_event=event,
+            Occurance.objects.create(
+                activity=event,
                 start_time=event.start_time,
                 end_time=event.end_time,
             )
@@ -469,7 +469,7 @@ def api_update_event(request, event_id):
 def api_delete_event(request, event_id):
     """Delete an event."""
     try:
-        event = get_object_or_404(PastEvent, id=event_id)
+        event = get_object_or_404(Activity, id=event_id)
         event.delete()
         return JsonResponse({"success": True})
     except Exception as e:
@@ -481,7 +481,7 @@ def api_update_event_settings(request, event_id):
     """Update timing settings for an event."""
     try:
         data = json.loads(request.body)
-        event = get_object_or_404(PastEvent, id=event_id)
+        event = get_object_or_404(Activity, id=event_id)
         fields = []
         if "default_duration" in data:
             event.default_duration = int(data["default_duration"])

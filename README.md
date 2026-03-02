@@ -87,10 +87,10 @@ Recommendations for `my-integrated-project/Dockerfile` are available upon reques
 - switch to using standard library date parsing (rather than having shadow `dateutil` dependency)
 - Defer user registration/auth to project (not app level concern)
 - remove unused `do_again_list/templates/do_again_list/dashboard.html`
-- rework API to be more restful:
+- [x] rework API to be more restful:
   - paths: `/api/<module>/<resource>/<id>/<action>`. First token should be set by project.
   - correctly use HTTP verbs (GET, PATCH, POST, DELETE) rather than mangling GET endpoints with actions like `update`
-- Switch any model field representing a duration to use the built-in `models.DurationField`
+- [ ] Switch any model field representing a duration to use the built-in `models.DurationField`
 - Create dedicated model for `items`
 
 ### Medium
@@ -103,22 +103,22 @@ Looking a bit more I think I understand the structure:
 - `HistoricalEvent` references a `PastEvent` and gives an _actual time_ when this `PastEvent` occurred.
 
 **PROPOSE**:
-- Phase 1:
+- [x] Phase 1:
   - Rename `PastEvent` to `Activity`
   - Rename `HistoricalEvent` to `Occurance`, or (more dryly) `ActivityInstance`
-- Phase 2:
+- [x] Phase 2:
   - Remove the specification of the _actual time_ from `Activity`
   - Rework service code to create a `Occurance` for any _actual time_ logging (even for the first occurance of the activity).
   - __This proposition adheres to typical database table normalization practices (1NF).__
-- Phase 3:
+- [x] Phase 3:
   - Remove `next_time` from `Activity`
-  - Add `predicted_start_time` to `Occurance` to indicate when a occurance _ought_ to occur.
-  - Retool service code to create a _future_ `occurance` setting the `predicted_start_time`.
+  - Add `next_time` to `Occurance` to indicate when a occurance _ought_ to occur.
+  - Retool service code to create a _future_ `occurance` setting the `next_time`.
   - Retool service code to update the `occurance` with actual start and end time when the user does the `activity`.
 
 
 ### Harder
-- Decouple service and view (e.g. `views.api_update_event` needs to be at least two layers: view and controller)
-- Adopt more formal API patterns using [Django Rest Framework](https://www.django-rest-framework.org/)
+- [x] Decouple service and view (e.g. `views.api_update_event` needs to be at least two layers: view and controller)
+- [x] Adopt more formal API patterns using [Django Rest Framework](https://www.django-rest-framework.org/)
   - Easier serialization (avoids much boilerplate like `views.api_update_event_settings`)
   - Standard viewsets reduce boilerplate, ensure standard behavior

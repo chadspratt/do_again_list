@@ -29,8 +29,8 @@ def user(user_factory):
 
 
 @pytest.fixture
-def past_event_factory(user):
-    resource_model = models.PastEvent
+def activity_factory(user):
+    resource_model = models.Activity
     resources = []
 
     def _factory(owner=user, **kwargs):
@@ -47,19 +47,17 @@ def past_event_factory(user):
 
 
 @pytest.fixture
-def past_event(past_event_factory, user_factory):
-    return past_event_factory()
+def activity(activity_factory, user_factory):
+    return activity_factory()
 
 
 @pytest.fixture
-def historical_event_factory(past_event):
-    resource_model = models.HistoricalEvent
+def occurance_factory(activity):
+    resource_model = models.Occurance
     resources = []
 
-    def _factory(past_event=past_event, **kwargs):
-        resource, _ = resource_model.objects.get_or_create(
-            past_event=past_event, **kwargs
-        )
+    def _factory(activity=activity, **kwargs):
+        resource, _ = resource_model.objects.get_or_create(activity=activity, **kwargs)
         resources.append(resource)
         return resource
 
@@ -72,5 +70,5 @@ def historical_event_factory(past_event):
 
 
 @pytest.fixture
-def historical_event(historical_event_factory, past_event_factory):
-    return historical_event_factory()
+def occurance(occurance_factory, activity_factory):
+    return occurance_factory()

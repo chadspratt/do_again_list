@@ -4,7 +4,7 @@ from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Value, When
 
 
-class PastEvent(models.Model):
+class Activity(models.Model):
     class MoralQuality(models.TextChoices):
         GOOD = "good"
         BAD = "bad"
@@ -53,7 +53,7 @@ class PastEvent(models.Model):
         return self.__class__.MoralQuality.NEUTRAL
 
 
-class HistoricalEvent(models.Model):
+class Occurance(models.Model):
     class Meta:
         ordering = ["-end_time"]
         constraints = [
@@ -64,15 +64,15 @@ class HistoricalEvent(models.Model):
             ),
         ]
 
-    past_event = models.ForeignKey(
-        PastEvent, on_delete=models.CASCADE, related_name="history"
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="history"
     )
     next_time = models.DateTimeField(null=True, blank=True)
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.past_event.title} on {self.end_time}"
+        return f"{self.activity.title} on {self.end_time}"
 
 
 class GameState(models.Model):

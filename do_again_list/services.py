@@ -61,22 +61,22 @@ class GameEffect(Addable):
 
 
 class ActivityService:
-    def create(self, data: serializers.PastEventSerializer) -> GameEffect:
+    def create(self, data: serializers.ActivitySerializer) -> GameEffect:
         instance = data.save()
         return GameEffect(game_state_delta=GameStateDelta(base_attack=1))
 
     def _get_latest_completed_occurrance(
-        self, activity: models.PastEvent
-    ) -> models.HistoricalEvent | None:
+        self, activity: models.Activity
+    ) -> models.Occurance | None:
         try:
-            return models.HistoricalEvent.objects.filter(
-                past_event=activity, end_time__isnull=False
+            return models.Occurance.objects.filter(
+                activity=activity, end_time__isnull=False
             ).latest("end_time")
-        except models.HistoricalEvent.DoesNotExist:
+        except models.Occurance.DoesNotExist:
             return None
 
     def start_activity(
-        self, *, activity: models.PastEvent, at_time: datetime.datetime
+        self, *, activity: models.Activity, at_time: datetime.datetime
     ) -> GameEffect:
         # Look for open Occurances
         # - may have been pre-created by a `set_next`
@@ -87,13 +87,11 @@ class ActivityService:
         game_effect = GameEffect()
         created = False
         try:
-            occurance = models.HistoricalEvent.objects.get(
-                past_event=activity, end_time=None
-            )
-        except models.HistoricalEvent.DoesNotExist:
+            occurance = models.Occurance.objects.get(activity=activity, end_time=None)
+        except models.Occurance.DoesNotExist:
             created = True
-            occurance = models.HistoricalEvent.objects.create(
-                past_event=activity, start_time=at_time
+            occurance = models.Occurance.objects.create(
+                activity=activity, start_time=at_time
             )
         if not created and occurance.start_time:
             # this occurrance already existed with a start time
@@ -110,14 +108,14 @@ class ActivityService:
 
         return game_effect
 
-    def end_activity(self, *, activity: models.PastEvent, at_time: datetime.datetime):
+    def end_activity(self, *, activity: models.Activity, at_time: datetime.datetime):
         game_effect = GameEffect()
         latest_completed_occurance = self._get_latest_completed_occurrance(
             activity=activity
         )
 
-        occurance = models.HistoricalEvent.objects.filter(
-            past_event=activity, end_time__isnull=True
+        occurance = models.Occurance.objects.filter(
+            activity=activity, end_time__isnull=True
         ).first()
         if occurance is None:
             # A task was ended which was never started!
@@ -149,7 +147,7 @@ class ActivityService:
 
         buff = StatModifier()
         label = ""
-        if activity.moral_quality == models.PastEvent.MoralQuality.GOOD:
+        if activity.moral_quality == models.Activity.MoralQuality.GOOD:
             if max_ok:
                 buff.attack += 3
                 buff.defense += 2
@@ -161,7 +159,7 @@ class ActivityService:
                 buff.defense += 1
                 game_effect.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
-        elif activity.moral_quality == models.PastEvent.MoralQuality.BAD:
+        elif activity.moral_quality == models.Activity.MoralQuality.BAD:
             if min_ok:
                 buff.attack += -3
                 buff.defense += -2
@@ -193,16 +191,14 @@ class ActivityService:
         return game_effect
 
     def set_next_activity(
-        self, *, activity: models.PastEvent, at_time: datetime.datetime
+        self, *, activity: models.Activity, at_time: datetime.datetime
     ) -> GameEffect:
         game_effect = GameEffect()
         try:
-            occurance = models.HistoricalEvent.objects.get(
-                past_event=activity, end_time=None
-            )
-        except models.HistoricalEvent.DoesNotExist:
-            occurance = models.HistoricalEvent.objects.create(
-                past_event=activity, next_time=at_time
+            occurance = models.Occurance.objects.get(activity=activity, end_time=None)
+        except models.Occurance.DoesNotExist:
+            occurance = models.Occurance.objects.create(
+                activity=activity, next_time=at_time
             )
         else:
             # There shouldn't be an open occurrance right now.

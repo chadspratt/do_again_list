@@ -26,18 +26,18 @@ class HumanReadableDurationField(serializers.DurationField):
         return internal
 
 
-class PastEventSerializer(serializers.ModelSerializer):
+class ActivitySerializer(serializers.ModelSerializer):
     max_duration_between_events = HumanReadableDurationField()
     min_duration_between_events = HumanReadableDurationField()
 
     class Meta:
-        model = models.PastEvent
+        model = models.Activity
         fields = "__all__"
 
 
-class HistoricalEventSerializer(serializers.ModelSerializer):
+class OccuranceSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.HistoricalEvent
+        model = models.Occurance
         fields = "__all__"
 
 
