@@ -1,7 +1,9 @@
-from django.db import models
 from django.contrib.auth import get_user_model
-from django.db.models.aggregates import Count
-from django.db.models.expressions import Case, Value, When
+from django.db import models
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
 
 
 class Activity(models.Model):
@@ -10,7 +12,7 @@ class Activity(models.Model):
         BAD = "bad"
         NEUTRAL = "neutral"
 
-    class ActivityState(models.TextChoices):
+    class State(models.TextChoices):
         PENDING = "pending"
         ACTIVE = "active"
         INACTIVE = "inactive"
@@ -31,15 +33,18 @@ class Activity(models.Model):
     def __str__(self):
         return f"{self.title} ({self.state})"
 
+    if TYPE_CHECKING:
+        occurances: RelatedManager["Occurance"]
+
     @property
-    def state(self) -> ActivityState:
+    def state(self) -> State:
         if not self.occurances.filter(start_time__isnull=False).exists():
             # at least one occurance has started
-            return self.__class__.ActivityState.PENDING
+            return self.__class__.State.PENDING
         if self.occurances.filter(end_time__isnull=True).exists():
             # at least one occurance has not been ended
-            return self.__class__.ActivityState.ACTIVE
-        return self.__class__.ActivityState.INACTIVE
+            return self.__class__.State.ACTIVE
+        return self.__class__.State.INACTIVE
 
     @property
     def moral_quality(self) -> MoralQuality:

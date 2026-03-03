@@ -1,7 +1,7 @@
-from collections.abc import Callable, Generator
-from django.contrib.auth import get_user_model
-from do_again_list import models
 import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+from do_again_list import models
 
 
 @pytest.fixture
@@ -9,9 +9,11 @@ def user_factory(db):
     resource_model = get_user_model()
     resources = []
 
-    def _factory(username="test-user", email="test@us.er", **kwargs):
-        resource, _ = resource_model.objects.get_or_create(
-            username=username, email=email, **kwargs
+    def _factory(
+        username="test-user", password="well-known", email="test@us.er", **kwargs
+    ):
+        resource = resource_model.objects.create_user(
+            username=username, password=password, email=email, **kwargs
         )
         resources.append(resource)
         return resource
@@ -27,6 +29,13 @@ def user_factory(db):
 @pytest.fixture
 def user(user_factory):
     return user_factory()
+
+
+@pytest.fixture
+def user_api_client(user):
+    client = APIClient()
+    client.login(username="test-user", password="well-known")
+    return client
 
 
 @pytest.fixture

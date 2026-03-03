@@ -66,8 +66,7 @@ targets = ["do_again_list"]
 exclude = ["migrations"]
 
 [tool.ruff.lint]
-ignore = ["E402", "D105", "D106"]
-select = ["E4", "E7", "E9", "F", "I", "D1"]
+select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

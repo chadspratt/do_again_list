@@ -1,17 +1,12 @@
+import datetime
+
 from rest_framework import serializers
+
 from do_again_list import models
 from do_again_list.utils import humanize_timedelta, parse_time_offset
-from typing import cast
-
-import datetime
 
 
 class HumanReadableDurationField(serializers.DurationField):
-    def __init__(self, **kwargs):
-        kwargs.pop("format", None)
-        kwargs.pop("allow_null", None)
-        super().__init__(allow_null=True, **kwargs)
-
     def to_representation(self, value) -> str:
         # Setting `format=None` (as was done it `__init__`) causes
         # `to_representation` to return a `timedelta`
@@ -27,12 +22,16 @@ class HumanReadableDurationField(serializers.DurationField):
 
 
 class ActivitySerializer(serializers.ModelSerializer):
-    max_duration_between_events = HumanReadableDurationField()
-    min_duration_between_events = HumanReadableDurationField()
+    max_duration_between_events = HumanReadableDurationField(
+        allow_null=True, required=False
+    )
+    min_duration_between_events = HumanReadableDurationField(
+        allow_null=True, required=False
+    )
 
     class Meta:
         model = models.Activity
-        fields = "__all__"
+        exclude = ("owner",)
 
 
 class OccuranceSerializer(serializers.ModelSerializer):
@@ -44,37 +43,44 @@ class OccuranceSerializer(serializers.ModelSerializer):
 class GameStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.GameState
-        fields = "__all__"
+        exclude = ("owner",)
 
 
 class ActivityActionSerializer(serializers.Serializer):
+    kill_streak = serializers.IntegerField(default=0)
     at_time = serializers.DateTimeField()
 
 
 class StatModifierSerializer(serializers.Serializer):
-    attack = serializers.IntegerField(read_only=True)
-    defense = serializers.IntegerField(read_only=True)
-    speed = serializers.IntegerField(read_only=True)
+    attack = serializers.IntegerField()
+    defense = serializers.IntegerField()
+    speed = serializers.IntegerField()
 
 
 class SpawnEnemySerializer(serializers.Serializer):
-    level = serializers.IntegerField(read_only=True)
-    modifiers = StatModifierSerializer(read_only=True)
+    level = serializers.IntegerField()
+    modifiers = StatModifierSerializer()
+
+
+class ResourceRefSerializer(serializers.Serializer):
+    klass = serializers.CharField()
+    pk = serializers.IntegerField()
 
 
 class ActivityResponseSerializer(serializers.Serializer):
     # Success field isn't really necessary, should use HTTP return codes
     #  to indicate failures/success state
-    success = serializers.BooleanField(read_only=True)
-    error = serializers.CharField(read_only=True, allow_null=True)
-    game = GameStateSerializer(allow_null=True, read_only=True)
-    messages = serializers.ListField(read_only=True, child=serializers.CharField())
-    spawn_enemy = SpawnEnemySerializer(read_only=True)
-    hero_buffs = StatModifierSerializer(read_only=True)
-    pending_heal = serializers.BooleanField(read_only=True)
-    pending_fatigue = serializers.BooleanField(read_only=True)
+    success = serializers.BooleanField()
+    error = serializers.CharField(allow_null=True)
+    game = GameStateSerializer(allow_null=True)
+    messages = serializers.ListField(child=serializers.CharField())
+    spawn_enemy = SpawnEnemySerializer(allow_null=True)
+    hero_buffs = StatModifierSerializer()
+    pending_heal = serializers.BooleanField()
+    pending_fatigue = serializers.BooleanField()
+    resource_ref = ResourceRefSerializer(allow_null=True)
 
 
 class ErrorResponseSerializer(serializers.Serializer):
-    success = serializers.BooleanField(read_only=True)
-    error = serializers.CharField(read_only=True)
+    success = serializers.BooleanField()
+    error = serializers.CharField()

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Occurance, Activity
+from .models import Activity, Occurance
 
 
 @admin.register(Activity)

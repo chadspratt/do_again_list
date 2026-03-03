@@ -1,5 +1,5 @@
-import re
 import datetime
+import re
 
 
 def parse_time_offset_ms(value: str) -> float:

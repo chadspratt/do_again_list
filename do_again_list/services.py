@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from do_again_list import models, serializers
 import datetime
-from dataclasses import dataclass, fields, field
+from dataclasses import dataclass, field, fields
+
+from do_again_list import models, serializers
 
 
 class Addable:
     def __add__(self, other):
-        for field in fields(other.__class__):
-            current_value = getattr(self, field.name)
-            current_value += getattr(other, field.name)
-            setattr(self, field.name, current_value)
+        for _field in fields(other.__class__):
+            current_value = getattr(self, _field.name)
+            current_value += getattr(other, _field.name)
+            setattr(self, _field.name, current_value)
         return self
 
 
@@ -44,19 +45,25 @@ class StatModifier(Addable):
 @dataclass
 class SpawnEnemy:
     level: int = 1
-    stat_modifier: StatModifier = field(default_factory=StatModifier)
+    modifiers: StatModifier = field(default_factory=StatModifier)
 
 
 @dataclass
-class GameEffect(Addable):
+class ResourceRef:
+    klass: str
+    pk: int
+
+
+@dataclass
+class GameEffect:
     game_state_delta: GameStateDelta = field(default_factory=GameStateDelta)
-    gold: int = 0
-    spawn_enemy: SpawnEnemy = field(default_factory=SpawnEnemy)
+    spawn_enemy: SpawnEnemy | None = None
     hero_buff: StatModifier = field(default_factory=StatModifier)
     reset_streak: bool = False
     messages: list[str] = field(default_factory=list)
     pending_heal: bool = False
     pending_fatigue: bool = False
+    resource_ref: ResourceRef | None = None
 
 
 class ActivityLifecycleException(Exception):
@@ -64,9 +71,12 @@ class ActivityLifecycleException(Exception):
 
 
 class ActivityService:
-    def create(self, data: serializers.ActivitySerializer) -> GameEffect:
-        instance = data.save()
-        return GameEffect(game_state_delta=GameStateDelta(base_attack=1))
+    def create(self, serializer: serializers.ActivitySerializer, owner) -> GameEffect:
+        instance = serializer.save(owner=owner)
+        return GameEffect(
+            game_state_delta=GameStateDelta(base_attack=1),
+            resource_ref=ResourceRef(klass="Activity", pk=instance.pk),
+        )
 
     def _get_latest_completed_occurrance(
         self, activity: models.Activity
@@ -78,8 +88,8 @@ class ActivityService:
         except models.Occurance.DoesNotExist:
             return None
 
-    def start_activity(
-        self, *, activity: models.Activity, at_time: datetime.datetime
+    def start(
+        self, *, activity: models.Activity, at_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
         created = False
@@ -100,7 +110,14 @@ class ActivityService:
 
         return game_effect
 
-    def end_activity(self, *, activity: models.Activity, at_time: datetime.datetime):
+    def end(
+        self,
+        *,
+        activity: models.Activity,
+        at_time: datetime.datetime,
+        kill_streak: int = 0,
+        **kwargs,
+    ):
         game_effect = GameEffect()
         latest_completed_occurance = self._get_latest_completed_occurrance(
             activity=activity
@@ -135,18 +152,17 @@ class ActivityService:
             )
 
         buff = StatModifier()
-        label = ""
         if activity.moral_quality == models.Activity.MoralQuality.GOOD:
             if max_ok:
                 buff.attack += 3
                 buff.defense += 2
                 buff.speed += 1
-                game_effect.gold += 15
+                game_effect.game_state_delta.gold += 15
                 game_effect.messages.append("Good habit on time!")
             else:
                 buff.attack += 1
                 buff.defense += 1
-                game_effect.gold += 5
+                game_effect.game_state_delta.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
         elif activity.moral_quality == models.Activity.MoralQuality.BAD:
             if min_ok:
@@ -165,37 +181,34 @@ class ActivityService:
                 buff.attack += 2
                 buff.defense += 1
                 buff.speed += 0
-                game_effect.gold += 10
-                game_effect.messages.append(f"Neutral event on schedule!")
+                game_effect.game_state_delta.gold += 10
+                game_effect.messages.append("Neutral event on schedule!")
             else:
                 buff.attack += 1
-                game_effect.gold += 3
+                game_effect.game_state_delta.gold += 3
                 game_effect.messages.append(
                     "Neutral event but timing was off — reduced reward."
                 )
 
         game_effect.hero_buff = game_effect.hero_buff + buff
-        game_effect.spawn_enemy.stat_modifier = buff.times(-1)
-
+        game_effect.spawn_enemy = SpawnEnemy(
+            level=(kill_streak // 3) + 1, modifiers=buff.times(-1)
+        )
         return game_effect
 
-    def set_next_activity(
-        self, *, activity: models.Activity, at_time: datetime.datetime
+    def set_next(
+        self, *, activity: models.Activity, at_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
         try:
-            occurance = models.Occurance.objects.get(activity=activity, end_time=None)
+            models.Occurance.objects.get(activity=activity, end_time=None)
         except models.Occurance.DoesNotExist:
-            occurance = models.Occurance.objects.create(
-                activity=activity, next_time=at_time
-            )
+            models.Occurance.objects.create(activity=activity, next_time=at_time)
         else:
             # There shouldn't be an open occurrance right now.
             raise ActivityLifecycleException(
                 "Cannot set next time for an active activity"
             )
-            game_effect.reset_streak = True
-            return game_effect
         return game_effect
 
 
@@ -203,12 +216,12 @@ class GameStateService:
     def update(
         self, *, game_state: models.GameState, game_effect: GameEffect
     ) -> models.GameState:
-        for field in models.GameState._meta.get_fields():
+        for _field in models.GameState._meta.get_fields():
             try:
-                delta = getattr(game_effect.game_state_delta, field.name)
+                delta = getattr(game_effect.game_state_delta, _field.name)
             except AttributeError:
                 continue
-            setattr(game_state, field.name, getattr(game_state, field.name) + delta)
+            setattr(game_state, _field.name, getattr(game_state, _field.name) + delta)
         if game_effect.reset_streak:
             game_state.streak = 0
         game_state.save()

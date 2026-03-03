@@ -1,25 +1,26 @@
-from inspect import Parameter
 import json
+from typing import Any, cast
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models import F, QuerySet
+from django.db import models
+from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
-from rest_framework.request import Request
-
-from .models import GameState, Occurance, Activity
-from . import serializers, services
-from rest_framework import viewsets, mixins
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
+from dataclasses import asdict
+from . import serializers, services
+from .models import Activity, GameState, Occurance
 
-# === Django Rest Framework Viewsets ===
+# === Django Rest Framework Viewsets === #
 
 
 class ActivityFilter(filters.FilterSet):
@@ -44,8 +45,6 @@ class ActivityFilter(filters.FilterSet):
 
 
 class ActivityViewSet(viewsets.ModelViewSet):
-    model = Activity
-    service_class = services.ActivityService
     queryset = Activity.objects.all()
     serializer_class = serializers.ActivitySerializer
     filterset_class = ActivityFilter
@@ -54,7 +53,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Activity.objects.filter(owner=user)
 
-    def _generate_response_serializer(
+    def _get_response_serializer(
         self, *, game_effect: services.GameEffect
     ) -> serializers.ActivityResponseSerializer:
         game_state, _ = GameState.objects.get_or_create(owner=self.request.user)
@@ -63,18 +62,56 @@ class ActivityViewSet(viewsets.ModelViewSet):
         )
         serializer = serializers.ActivityResponseSerializer(
             data={
-                "game": serializers.GameStateSerializer(game_state),
+                "game": serializers.GameStateSerializer(game_state).data,
                 "success": True,
-                "game_messages": game_effect.messages,
-                "spawn_enemy": serializers.SpawnEnemySerializer(
-                    game_effect.spawn_enemy
-                ),
-                "hero_buff": serializers.StatModifierSerializer(game_effect.hero_buff),
+                "error": None,
+                "messages": game_effect.messages,
+                "spawn_enemy": asdict(game_effect.spawn_enemy)
+                if game_effect.spawn_enemy is not None
+                else None,
+                "hero_buffs": asdict(game_effect.hero_buff),
                 "pending_heal": game_effect.pending_heal,
                 "pending_fatigue": game_effect.pending_fatigue,
-            }
+                "resource_ref": asdict(game_effect.resource_ref)
+                if game_effect.resource_ref is not None
+                else None,
+            },
+            context={},
         )
+        serializer.is_valid(raise_exception=True)
         return serializer
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """
+        Override the default ``create`` behavior. The original implementation
+        can be easily viewed at explored at:
+        https://www.cdrf.co/3.16/rest_framework.viewsets/ModelViewSet.html#create
+        """
+        # parse and validate post body (and cast so that typehints chill out)
+        serializer = cast(
+            serializers.ActivitySerializer, self.get_serializer(data=request.data)
+        )
+        serializer.is_valid(raise_exception=True)
+        try:
+            # Do game action and get effects
+            game_effect = services.ActivityService().create(
+                serializer=serializer, owner=request.user
+            )
+            # send game response
+            return Response(
+                self._get_response_serializer(game_effect=game_effect).data,
+                status=201,
+            )
+        except services.ActivityLifecycleException as exc:
+            # send error response
+            error_serializer = serializers.ActivityResponseSerializer(
+                data={"success": False, "error": str(exc)}
+            )
+            error_serializer.is_valid(raise_exception=True)
+            return Response(error_serializer.data, status=400)
+        return super().create(request, *args, **kwargs)
+
+    # --- Custom Actions --- #
 
     @extend_schema(
         responses={
@@ -88,84 +125,80 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer_class=serializers.ActivityActionSerializer,
     )
     def start(self, request, pk):
-        activity = get_object_or_404(Activity, id=pk)
-        if activity.state == Activity.ActivityState.ACTIVE:
-            serializer = serializers.ErrorResponseSerializer(
-                data={"success": False, "error": "Cannot start an active activity"}
-            )
-            return Response(serializer, status=400)
-        serializer = serializers.ActivityActionSerializer(data=request.data)
-        try:
-            game_effect = services.ActivityService().start_activity(
-                activity=activity, at_time=serializer.validated_data["at_time"]
-            )
-            return Response(
-                self._generate_response_serializer(game_effect=game_effect), status=200
-            )
-        except services.ActivityLifecycleException as exc:
-            return Response(
-                serializers.ActivityResponseSerializer(
-                    data={"success": False, "error": str(exc)}
-                ),
-                status=400,
-            )
+        return self._generic_activity_action(
+            activity=get_object_or_404(Activity, id=pk),
+            action="start",
+        )
 
-    @extend_schema(responses={200: serializers.ActivityResponseSerializer})
+    @extend_schema(
+        responses={
+            200: serializers.ActivityResponseSerializer,
+            400: serializers.ErrorResponseSerializer,
+        }
+    )
     @action(
         detail=True,
         methods=["post"],
         serializer_class=serializers.ActivityActionSerializer,
     )
     def end(self, request, pk):
-        activity = get_object_or_404(Activity, id=pk)
-        if activity.state != Activity.ActivityState.ACTIVE:
-            serializer = serializers.ErrorResponseSerializer(
-                data={"success": False, "error": "Cannot end an inactive activity"}
-            )
-            return Response(serializer, status=400)
-        serializer = serializers.ActivityActionSerializer(data=request.data)
-        try:
-            game_effect = services.ActivityService().end_activity(
-                activity=activity, at_time=serializer.validated_data["at_time"]
-            )
-            return Response(self._generate_response_serializer(game_effect=game_effect))
-        except services.ActivityLifecycleException as exc:
-            return Response(
-                serializers.ActivityResponseSerializer(
-                    data={"success": False, "error": str(exc)}
-                ),
-                status=400,
-            )
+        return self._generic_activity_action(
+            activity=get_object_or_404(Activity, id=pk),
+            action="end",
+            allowable_states=(Activity.State.ACTIVE,),
+        )
 
-    @extend_schema(responses={200: serializers.ActivityResponseSerializer})
+    @extend_schema(
+        responses={
+            200: serializers.ActivityResponseSerializer,
+            400: serializers.ErrorResponseSerializer,
+        }
+    )
     @action(
         detail=True,
         methods=["post"],
         serializer_class=serializers.ActivityActionSerializer,
     )
     def set_next(self, request, pk):
-        activity = get_object_or_404(Activity, id=pk)
-        if activity.state == Activity.ActivityState.ACTIVE:
+        return self._generic_activity_action(
+            activity=get_object_or_404(Activity, id=pk),
+            action="set_next",
+        )
+
+    def _generic_activity_action(
+        self,
+        activity: Activity,
+        action: str,
+        allowable_states: tuple[Activity.State, ...] = (
+            Activity.State.INACTIVE,
+            Activity.State.PENDING,
+        ),
+    ) -> Response:
+        if activity.state not in allowable_states:
             serializer = serializers.ErrorResponseSerializer(
                 data={
                     "success": False,
-                    "error": "Cannot set next time for an active activity",
+                    "error": (
+                        f"Cannot `{action}` for an activity in state `{activity.state}`"
+                    ),
                 }
             )
             return Response(serializer, status=400)
-        serializer = serializers.ActivityActionSerializer(data=request.data)
+        serializer = self.get_serializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            game_effect = services.ActivityService().set_next_activity(
-                activity=activity, at_time=serializer.validated_data["at_time"]
+            game_effect = getattr(services.ActivityService(), action)(
+                activity=activity, **serializer.validated_data
             )
-            return Response(self._generate_response_serializer(game_effect=game_effect))
-        except services.ActivityLifecycleException as exc:
             return Response(
-                serializers.ActivityResponseSerializer(
-                    data={"success": False, "error": str(exc)}
-                ),
-                status=400,
+                self._get_response_serializer(game_effect=game_effect).data,
             )
+        except services.ActivityLifecycleException as exc:
+            error_serializer = serializers.ActivityResponseSerializer(
+                data={"success": False, "error": str(exc)}
+            )
+            error_serializer.is_valid(raise_exception=True)
+            return Response(error_serializer.data, status=400)
 
 
 class OccuranceFilter(filters.FilterSet):
@@ -191,6 +224,9 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         user = self.request.user
         return GameState.objects.filter(owner=user)
+
+
+# === LEGACY === #
 
 
 def _get_game_state():
@@ -400,7 +436,7 @@ def api_update_event(request, event_id):
                     # On time: full reward
                     delta = {"attack": 3, "defense": 2, "speed": 1}
                     gold_to_award += 15
-                    game_messages.append(f"Good habit on time!")
+                    game_messages.append("Good habit on time!")
                 else:
                     # Late: smaller reward
                     delta = {"attack": 1, "defense": 1, "speed": 0}
@@ -424,7 +460,7 @@ def api_update_event(request, event_id):
                     # Fully compliant
                     delta = {"attack": 2, "defense": 1, "speed": 1}
                     gold_to_award += 10
-                    game_messages.append(f"Neutral event on schedule!")
+                    game_messages.append("Neutral event on schedule!")
                 else:
                     # Violated a bound
                     delta = {"attack": 1, "defense": 0, "speed": 0}

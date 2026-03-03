@@ -1,26 +1,26 @@
-from collections.abc import Callable
 import datetime
-from django.core.exceptions import MiddlewareNotUsed
-from django.utils import timezone
-from do_again_list import services as s
-from do_again_list import models as m
+from collections.abc import Callable
+
 import pytest
-from tests.conftest import game_state
+from django.utils import timezone
+
+from do_again_list import models as m
+from do_again_list import services as s
 
 
 class TestActivityService:
-    def test_start_activity(self, activity):
+    def test_start(self, activity):
         # GIVEN there is no occurance
         # WHEN I start the activity with a start time value
         # THEN an occurance will be created for the activity
         # AND the occurance start time will match the given value
         assert activity.occurances.count() == 0
         given_time = timezone.now()
-        s.ActivityService().start_activity(activity=activity, at_time=given_time)
+        s.ActivityService().start(activity=activity, at_time=given_time)
         assert activity.occurances.count() == 1
         assert activity.occurances.all()[0].start_time == given_time
 
-    def test_start_activity__with_next_time(
+    def test_start__with_next_time(
         self, activity, occurance_factory: Callable[..., m.Occurance]
     ):
         # GIVEN there is an occurance without a start time
@@ -29,26 +29,24 @@ class TestActivityService:
         # AND the occurance start time will match the given value
         occurance = occurance_factory(next_time=timezone.now())
         given_time = timezone.now()
-        s.ActivityService().start_activity(activity=activity, at_time=given_time)
+        s.ActivityService().start(activity=activity, at_time=given_time)
         assert activity.occurances.count() == 1
         assert activity.occurances.all()[0] == occurance
         occurance.refresh_from_db()
         assert occurance.start_time == given_time
 
-    def test_start_activity__with_start_time(
+    def test_start__with_start_time(
         self, activity, occurance_factory: Callable[..., m.Occurance]
     ):
         # GIVEN there is an occurance with a start time
         # WHEN I start the activity with a start time value
         # THEN an exception will be raised
-        occurance = occurance_factory(
-            next_time=timezone.now(), start_time=timezone.now()
-        )
+        occurance_factory(next_time=timezone.now(), start_time=timezone.now())
         given_time = timezone.now()
         with pytest.raises(Exception):
-            s.ActivityService().start_activity(activity=activity, at_time=given_time)
+            s.ActivityService().start(activity=activity, at_time=given_time)
 
-    def test_start_activity__with_end_time(
+    def test_start__with_end_time(
         self, activity, occurance_factory: Callable[..., m.Occurance]
     ):
         # GIVEN there is an occurance with a start time and end time
@@ -60,7 +58,7 @@ class TestActivityService:
             next_time=old_time, start_time=old_time, end_time=old_time
         )
         given_time = timezone.now()
-        s.ActivityService().start_activity(activity=activity, at_time=given_time)
+        s.ActivityService().start(activity=activity, at_time=given_time)
         assert activity.occurances.count() == 2
         occurances = set(activity.occurances.all())
         # will not raise KeyError

@@ -1,14 +1,15 @@
 import datetime
-from operator import mod
-from do_again_list import models
+
 from django.utils import timezone
+
+from do_again_list import models
 
 
 class TestActivityModel:
     def test_state__pending(self, activity, occurance_factory):
         # GIVEN a activity has no occurances
         # THEN the activity will have state PENDING
-        assert activity.state == models.Activity.ActivityState.PENDING
+        assert activity.state == models.Activity.State.PENDING
 
     def test_state__inactive_with_next(self, activity, occurance_factory):
         # GIVEN a activity has an occurance
@@ -19,7 +20,7 @@ class TestActivityModel:
         occurance_factory(
             next_time=timezone.now(), start_time=timezone.now(), end_time=timezone.now()
         )
-        assert activity.state == models.Activity.ActivityState.INACTIVE
+        assert activity.state == models.Activity.State.INACTIVE
 
     def test_state__inactive_no_next(self, activity, occurance_factory):
         # GIVEN a activity has an occurance
@@ -28,7 +29,7 @@ class TestActivityModel:
         # AND the occurance has no next_time set
         # THEN the activity will have state INACTIVE
         occurance_factory(start_time=timezone.now(), end_time=timezone.now())
-        assert activity.state == models.Activity.ActivityState.INACTIVE
+        assert activity.state == models.Activity.State.INACTIVE
 
     def test_state__active(self, activity, occurance_factory):
         # GIVEN a activity has an occurance
@@ -36,7 +37,7 @@ class TestActivityModel:
         # AND the occurance has no end time
         # THEN the activity will have state INACTIVE
         occurance_factory(start_time=timezone.now())
-        assert activity.state == models.Activity.ActivityState.ACTIVE
+        assert activity.state == models.Activity.State.ACTIVE
 
     def test_moral_quality__good(self, activity):
         activity.max_duration_between_events = datetime.timedelta(seconds=1)
