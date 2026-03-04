@@ -13,7 +13,7 @@ class TestActivityViewSetE2E:
         starting_base_attack = game_state.base_attack
         response = user_api_client.post(
             "/api/do-again/activities/",
-            {"title": "test activity", "max_duration_between_events": "1h29m35s"},
+            {"title": "test activity", "max_time_between_events": "1h29m35s"},
         )
         print(response.text)
         assert response.status_code == 201
@@ -23,7 +23,7 @@ class TestActivityViewSetE2E:
         created_activity = models.Activity.objects.get(
             pk=response.json()["resource_ref"]["pk"]
         )
-        assert created_activity.max_duration_between_events == datetime.timedelta(
+        assert created_activity.max_time_between_events == datetime.timedelta(
             hours=1, minutes=29, seconds=35
         )
         created_activity.delete()

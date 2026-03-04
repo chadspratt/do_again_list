@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-
+import datetime
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
@@ -22,14 +22,12 @@ class Activity(models.Model):
     owner = models.ForeignKey(get_user_model(), on_delete=models.PROTECT)
     title = models.CharField(max_length=255)
     ordering = models.IntegerField(default=0)
-    default_duration = models.IntegerField(default=0)
+    default_duration = models.DurationField(default=datetime.timedelta(0))
     next_time = models.DateTimeField(null=True, blank=True)
-    min_duration = models.CharField(max_length=50, blank=True, default="")
-    max_duration = models.CharField(max_length=50, blank=True, default="")
-    min_time_between_events = models.CharField(max_length=50, blank=True, default="")
-    max_time_between_events = models.CharField(max_length=50, blank=True, default="")
-    max_duration_between_events = models.DurationField(blank=True, null=True)
-    min_duration_between_events = models.DurationField(blank=True, null=True)
+    min_duration = models.DurationField(blank=True, null=True)
+    max_duration = models.DurationField(blank=True, null=True)
+    max_time_between_events = models.DurationField(blank=True, null=True)
+    min_time_between_events = models.DurationField(blank=True, null=True)
     value = models.FloatField(default=1.0)
     repeats = models.BooleanField(default=True)
 
@@ -50,8 +48,8 @@ class Activity(models.Model):
 
     @property
     def moral_quality(self) -> MoralQuality:
-        has_max = self.max_duration_between_events is not None
-        has_min = self.min_duration_between_events is not None
+        has_max = self.max_time_between_events is not None
+        has_min = self.min_time_between_events is not None
 
         if has_max and not has_min:
             return self.__class__.MoralQuality.GOOD

@@ -36,16 +36,16 @@ class TestActivityModel:
         assert activity.state == models.Activity.State.ACTIVE
 
     def test_moral_quality__good(self, activity):
-        activity.max_duration_between_events = datetime.timedelta(seconds=1)
+        activity.max_time_between_events = datetime.timedelta(seconds=1)
         assert activity.moral_quality == models.Activity.MoralQuality.GOOD
 
     def test_moral_quality__bad(self, activity):
-        activity.min_duration_between_events = datetime.timedelta(seconds=1)
+        activity.min_time_between_events = datetime.timedelta(seconds=1)
         assert activity.moral_quality == models.Activity.MoralQuality.BAD
 
     def test_moral_quality__neutral_both(self, activity):
-        activity.min_duration_between_events = datetime.timedelta(seconds=1)
-        activity.max_duration_between_events = datetime.timedelta(seconds=1)
+        activity.min_time_between_events = datetime.timedelta(seconds=1)
+        activity.max_time_between_events = datetime.timedelta(seconds=1)
         assert activity.moral_quality == models.Activity.MoralQuality.NEUTRAL
 
     def test_moral_quality__neutral_neither(self, activity):

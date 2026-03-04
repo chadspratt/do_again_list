@@ -20,16 +20,30 @@ class HumanReadableDurationField(serializers.DurationField):
 
 
 class ActivitySerializer(serializers.ModelSerializer):
-    max_duration_between_events = HumanReadableDurationField(
+    default_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_duration = HumanReadableDurationField(allow_null=True, required=False)
+    min_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_time_between_events = HumanReadableDurationField(
         allow_null=True, required=False
     )
-    min_duration_between_events = HumanReadableDurationField(
+    min_time_between_events = HumanReadableDurationField(
         allow_null=True, required=False
     )
 
     class Meta:
         model = models.Activity
-        exclude = ("owner",)
+        fields = (
+            "title",
+            "ordering",
+            "default_duration",
+            "next_time",
+            "min_duration",
+            "max_duration",
+            "max_time_between_events",
+            "min_time_between_events",
+            "value",
+            "repeats",
+        )
 
 
 class OccuranceSerializer(serializers.ModelSerializer):

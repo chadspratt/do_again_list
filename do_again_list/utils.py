@@ -24,8 +24,11 @@ def parse_time_offset_ms(value: str) -> float:
     return total
 
 
-def parse_time_offset(value: str) -> datetime.timedelta | None:
-    time_offset_ms = parse_time_offset_ms(value)
+def parse_time_offset(value: str | int) -> datetime.timedelta | None:
+    if isinstance(value, int):
+        time_offset_ms = value * 1000
+    elif isinstance(value, str):
+        time_offset_ms = parse_time_offset_ms(value)
     if time_offset_ms == 0:
         return None
     return datetime.timedelta(milliseconds=time_offset_ms)
