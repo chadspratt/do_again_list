@@ -7,15 +7,13 @@ from do_again_list.utils import humanize_timedelta, parse_time_offset
 
 
 class HumanReadableDurationField(serializers.DurationField):
-    def to_representation(self, value) -> str:
-        # Setting `format=None` (as was done it `__init__`) causes
-        # `to_representation` to return a `timedelta`
-        # https://www.django-rest-framework.org/api-guide/fields/#durationfield
-        # duration = cast(datetime.timedelta, super().to_representation(value))
+    def to_representation(self, value: datetime.timedelta) -> str:
         return humanize_timedelta(value)
 
-    def to_internal_value(self, value) -> datetime.timedelta:
-        internal = parse_time_offset(value)
+    def to_internal_value(self, data: datetime.timedelta | str) -> datetime.timedelta:
+        if isinstance(data, datetime.timedelta):
+            return data
+        internal = parse_time_offset(data)
         if internal is None:
             return datetime.timedelta()
         return internal

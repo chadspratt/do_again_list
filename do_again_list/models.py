@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
 
 if TYPE_CHECKING:
     from django_stubs_ext.db.models.manager import RelatedManager
@@ -22,6 +23,7 @@ class Activity(models.Model):
     title = models.CharField(max_length=255)
     ordering = models.IntegerField(default=0)
     default_duration = models.IntegerField(default=0)
+    next_time = models.DateTimeField(null=True, blank=True)
     min_duration = models.CharField(max_length=50, blank=True, default="")
     max_duration = models.CharField(max_length=50, blank=True, default="")
     min_time_between_events = models.CharField(max_length=50, blank=True, default="")
@@ -39,11 +41,10 @@ class Activity(models.Model):
 
     @property
     def state(self) -> State:
-        if not self.occurances.filter(start_time__isnull=False).exists():
-            # at least one occurance has started
+        if self.occurances.all().count() == 0:
             return self.__class__.State.PENDING
         if self.occurances.filter(end_time__isnull=True).exists():
-            # at least one occurance has not been ended
+            # at least one occurance has started and not ended
             return self.__class__.State.ACTIVE
         return self.__class__.State.INACTIVE
 
@@ -62,19 +63,11 @@ class Activity(models.Model):
 class Occurance(models.Model):
     class Meta:
         ordering = ["-end_time"]
-        constraints = [
-            models.CheckConstraint(
-                name="start_or_next_time_required",
-                condition=models.Q(start_time__isnull=False)
-                | models.Q(next_time__isnull=False),
-            ),
-        ]
 
     activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE, related_name="occurances"
     )
-    next_time = models.DateTimeField(null=True, blank=True)
-    start_time = models.DateTimeField(null=True, blank=True)
+    start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

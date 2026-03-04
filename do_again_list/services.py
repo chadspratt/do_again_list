@@ -135,9 +135,9 @@ class ActivityService:
         max_ok = True
         min_ok = True
         # Apply bonuses
-        if occurance.next_time is not None:
+        if activity.next_time is not None:
             # compare when this occurance was scheduled to begin
-            max_ok = occurance.start_time < occurance.next_time
+            max_ok = occurance.start_time < activity.next_time
             min_ok = True
         elif latest_completed_occurance is not None:
             # compare when this occurance _ought_ to occur absent an explicit schedule
@@ -200,15 +200,8 @@ class ActivityService:
         self, *, activity: models.Activity, at_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
-        try:
-            models.Occurance.objects.get(activity=activity, end_time=None)
-        except models.Occurance.DoesNotExist:
-            models.Occurance.objects.create(activity=activity, next_time=at_time)
-        else:
-            # There shouldn't be an open occurrance right now.
-            raise ActivityLifecycleException(
-                "Cannot set next time for an active activity"
-            )
+        activity.next_time = at_time
+        activity.save()
         return game_effect
 
 

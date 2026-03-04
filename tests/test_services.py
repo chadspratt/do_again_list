@@ -20,28 +20,13 @@ class TestActivityService:
         assert activity.occurances.count() == 1
         assert activity.occurances.all()[0].start_time == given_time
 
-    def test_start__with_next_time(
-        self, activity, occurance_factory: Callable[..., m.Occurance]
-    ):
-        # GIVEN there is an occurance without a start time
-        # WHEN I start the activity with a start time value
-        # THEN the existing occurance will be updated for the activity
-        # AND the occurance start time will match the given value
-        occurance = occurance_factory(next_time=timezone.now())
-        given_time = timezone.now()
-        s.ActivityService().start(activity=activity, at_time=given_time)
-        assert activity.occurances.count() == 1
-        assert activity.occurances.all()[0] == occurance
-        occurance.refresh_from_db()
-        assert occurance.start_time == given_time
-
     def test_start__with_start_time(
         self, activity, occurance_factory: Callable[..., m.Occurance]
     ):
         # GIVEN there is an occurance with a start time
         # WHEN I start the activity with a start time value
         # THEN an exception will be raised
-        occurance_factory(next_time=timezone.now(), start_time=timezone.now())
+        occurance_factory(start_time=timezone.now())
         given_time = timezone.now()
         with pytest.raises(Exception):
             s.ActivityService().start(activity=activity, at_time=given_time)
@@ -54,9 +39,7 @@ class TestActivityService:
         # THEN a new occurance will be created for the activity
         # AND the occurance start time will match the given value
         old_time = timezone.now() - datetime.timedelta(minutes=10)
-        occurance = occurance_factory(
-            next_time=old_time, start_time=old_time, end_time=old_time
-        )
+        occurance = occurance_factory(start_time=old_time, end_time=old_time)
         given_time = timezone.now()
         s.ActivityService().start(activity=activity, at_time=given_time)
         assert activity.occurances.count() == 2

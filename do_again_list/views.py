@@ -127,6 +127,10 @@ class ActivityViewSet(viewsets.ModelViewSet):
         return self._generic_activity_action(
             activity=self.get_object(),
             action="start",
+            allowable_states=(
+                Activity.State.INACTIVE,
+                Activity.State.PENDING,
+            ),
         )
 
     @extend_schema(
@@ -162,16 +166,18 @@ class ActivityViewSet(viewsets.ModelViewSet):
         return self._generic_activity_action(
             activity=self.get_object(),
             action="set_next",
+            allowable_states=(
+                Activity.State.ACTIVE,
+                Activity.State.INACTIVE,
+                Activity.State.PENDING,
+            ),
         )
 
     def _generic_activity_action(
         self,
         activity: Activity,
         action: str,
-        allowable_states: tuple[Activity.State, ...] = (
-            Activity.State.INACTIVE,
-            Activity.State.PENDING,
-        ),
+        allowable_states: tuple[Activity.State, ...],
     ) -> Response:
         if activity.state not in allowable_states:
             serializer = serializers.ErrorResponseSerializer(

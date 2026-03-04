@@ -15,18 +15,14 @@ class TestActivityModel:
         # GIVEN a activity has an occurance
         # AND the occurance has a start time
         # AND the occurance has an end time
-        # AND the occurance has next_time set
         # THEN the activity will have state INACTIVE
-        occurance_factory(
-            next_time=timezone.now(), start_time=timezone.now(), end_time=timezone.now()
-        )
+        occurance_factory(start_time=timezone.now(), end_time=timezone.now())
         assert activity.state == models.Activity.State.INACTIVE
 
     def test_state__inactive_no_next(self, activity, occurance_factory):
         # GIVEN a activity has an occurance
         # AND the occurance has a start time
         # AND the occurance has an end time
-        # AND the occurance has no next_time set
         # THEN the activity will have state INACTIVE
         occurance_factory(start_time=timezone.now(), end_time=timezone.now())
         assert activity.state == models.Activity.State.INACTIVE
