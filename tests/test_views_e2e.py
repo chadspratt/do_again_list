@@ -1,7 +1,9 @@
 import datetime
+
 from django.utils import timezone
-from do_again_list import models
 from rest_framework.test import APIClient
+
+from do_again_list import models
 
 
 class TestActivityViewSetE2E:
@@ -10,7 +12,7 @@ class TestActivityViewSetE2E:
     ):
         starting_base_attack = game_state.base_attack
         response = user_api_client.post(
-            f"/api/do-again/activities/",
+            "/api/do-again/activities/",
             {"title": "test activity", "max_duration_between_events": "1h29m35s"},
         )
         print(response.text)

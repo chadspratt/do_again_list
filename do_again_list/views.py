@@ -1,9 +1,9 @@
 import json
+from dataclasses import asdict
 from typing import Any, cast
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db import models
 from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -16,7 +16,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
-from dataclasses import asdict
+
 from . import serializers, services
 from .models import Activity, GameState, Occurance
 
@@ -109,7 +109,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
             )
             error_serializer.is_valid(raise_exception=True)
             return Response(error_serializer.data, status=400)
-        return super().create(request, *args, **kwargs)
 
     # --- Custom Actions --- #
 
@@ -126,7 +125,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     )
     def start(self, request, pk):
         return self._generic_activity_action(
-            activity=get_object_or_404(Activity, id=pk),
+            activity=self.get_object(),
             action="start",
         )
 
@@ -143,7 +142,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     )
     def end(self, request, pk):
         return self._generic_activity_action(
-            activity=get_object_or_404(Activity, id=pk),
+            activity=self.get_object(),
             action="end",
             allowable_states=(Activity.State.ACTIVE,),
         )
@@ -161,7 +160,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     )
     def set_next(self, request, pk):
         return self._generic_activity_action(
-            activity=get_object_or_404(Activity, id=pk),
+            activity=self.get_object(),
             action="set_next",
         )
 
@@ -183,7 +182,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     ),
                 }
             )
-            return Response(serializer, status=400)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data, status=400)
         serializer = self.get_serializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
         try:

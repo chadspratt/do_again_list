@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.auth import get_user_model
 from django.db import models
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from django_stubs_ext.db.models.manager import RelatedManager

@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
 from do_again_list import models
 
 
@@ -43,8 +44,10 @@ def activity_factory(user):
     resource_model = models.Activity
     resources = []
 
-    def _factory(owner=user, **kwargs) -> models.Activity:
-        resource, _ = resource_model.objects.get_or_create(owner=owner, **kwargs)
+    def _factory(title="test-activity", owner=user, **kwargs) -> models.Activity:
+        resource, _ = resource_model.objects.get_or_create(
+            title=title, owner=owner, **kwargs
+        )
         resources.append(resource)
         return resource
 
