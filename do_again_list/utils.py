@@ -18,10 +18,8 @@ def parse_time_offset_ms(value: str) -> float:
     if hour:
         total += float(hour.group(1)) * 60 * 60 * 1000
     if minute:
-        print(f"minutes: {minute.group(1)}")
         total += float(minute.group(1)) * 60 * 1000
     if sec:
-        print(f"seconds: {sec.group(1)}")
         total += float(sec.group(1)) * 1000
     return total
 

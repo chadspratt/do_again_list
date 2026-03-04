@@ -144,11 +144,11 @@ class ActivityService:
             time_since_last_occurance = at_time - latest_completed_occurance.end_time
             max_ok = (
                 activity.max_duration_between_events is not None
-                or time_since_last_occurance <= activity.max_duration_between_events
+                and time_since_last_occurance <= activity.max_duration_between_events
             )
             min_ok = (
                 activity.min_duration_between_events is not None
-                or time_since_last_occurance >= activity.min_duration_between_events
+                and time_since_last_occurance >= activity.min_duration_between_events
             )
 
         buff = StatModifier()
@@ -165,7 +165,7 @@ class ActivityService:
                 game_effect.game_state_delta.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
         elif activity.moral_quality == models.Activity.MoralQuality.BAD:
-            if min_ok:
+            if not min_ok:
                 buff.attack += -3
                 buff.defense += -2
                 buff.speed += -1

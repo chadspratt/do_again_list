@@ -104,7 +104,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             )
         except services.ActivityLifecycleException as exc:
             # send error response
-            error_serializer = serializers.ActivityResponseSerializer(
+            error_serializer = serializers.ErrorResponseSerializer(
                 data={"success": False, "error": str(exc)}
             )
             error_serializer.is_valid(raise_exception=True)
@@ -200,7 +200,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 self._get_response_serializer(game_effect=game_effect).data,
             )
         except services.ActivityLifecycleException as exc:
-            error_serializer = serializers.ActivityResponseSerializer(
+            error_serializer = serializers.ErrorResponseSerializer(
                 data={"success": False, "error": str(exc)}
             )
             error_serializer.is_valid(raise_exception=True)
