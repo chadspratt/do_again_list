@@ -71,7 +71,18 @@ class StatModifierSerializer(serializers.Serializer):
 
 class SpawnEnemySerializer(serializers.Serializer):
     level = serializers.IntegerField()
-    modifiers = StatModifierSerializer()
+    stat_modifier = StatModifierSerializer()
+
+
+class BuffSerializer(serializers.Serializer):
+    stat = serializers.ChoiceField(
+        choices=[("attack", "Attack"), ("defense", "Defense"), ("speed", "Speed")]
+    )
+    amount = serializers.IntegerField()
+
+    # drf uses ``label`` as a standard keyword arg which collides with this
+    #  during typechecking
+    label = serializers.CharField()  # type: ignore
 
 
 class ResourceRefSerializer(serializers.Serializer):

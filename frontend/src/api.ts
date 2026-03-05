@@ -11,11 +11,12 @@ interface ApiResponse {
   success: boolean;
   error?: string;
   game?: import('./types').GameState;
-  game_messages?: string[];
+  messages?: string[];
   spawn_enemy?: { level: number; stat_modifier?: { attack?: number; defense?: number; speed?: number } } | null;
   hero_buffs?: { stat: 'attack' | 'defense' | 'speed'; amount: number; label: string }[];
   pending_heal?: boolean;
   pending_fatigue?: boolean;
+  resource_ref?: { klass: string; pk: number};
 }
 
 async function apiPost(url: string, body: object): Promise<ApiResponse> {

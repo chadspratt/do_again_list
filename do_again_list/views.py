@@ -69,7 +69,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 "spawn_enemy": asdict(game_effect.spawn_enemy)
                 if game_effect.spawn_enemy is not None
                 else None,
-                "hero_buffs": asdict(game_effect.hero_buff),
+                "hero_buffs": [asdict(buff) for buff in game_effect.hero_buffs],
                 "pending_heal": game_effect.pending_heal,
                 "pending_fatigue": game_effect.pending_fatigue,
                 "resource_ref": asdict(game_effect.resource_ref)

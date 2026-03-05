@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, field, fields
+from dataclasses import asdict, dataclass, field, fields
+from typing import Literal
 
 from do_again_list import models, serializers
 
@@ -45,7 +46,7 @@ class StatModifier(Addable):
 @dataclass
 class SpawnEnemy:
     level: int = 1
-    modifiers: StatModifier = field(default_factory=StatModifier)
+    stat_modifier: StatModifier = field(default_factory=StatModifier)
 
 
 @dataclass
@@ -54,11 +55,27 @@ class ResourceRef:
     pk: int
 
 
+# TODO: There is some design friction between this and the enemy spawn
+#  stat_modifier. They could use the same model. The ``StatModifier`` model
+#  seems better because it doesn't key off Literals. If new stats are added
+#  they will affect contexts which are specific to the stat itself and must
+#  resolve to the stat name (more like how ``StatModifier`` exists), see the
+#  following pattern in `engine.ts`::
+#
+#     hero.attack = gs.total_attack + buffBonus(state.buffs, 'attack');
+#     hero.defense = gs.total_defense + buffBonus(state.buffs, 'defense');
+@dataclass
+class Buff:
+    stat: Literal["attack", "defense", "speed"]
+    amount: int
+    label: str
+
+
 @dataclass
 class GameEffect:
     game_state_delta: GameStateDelta = field(default_factory=GameStateDelta)
     spawn_enemy: SpawnEnemy | None = None
-    hero_buff: StatModifier = field(default_factory=StatModifier)
+    hero_buffs: list[Buff] = field(default_factory=list)
     reset_streak: bool = False
     messages: list[str] = field(default_factory=list)
     pending_heal: bool = False
@@ -151,48 +168,54 @@ class ActivityService:
                 and time_since_last_occurance >= activity.min_time_between_events
             )
 
-        buff = StatModifier()
+        stat_modifier = StatModifier()
+        buff_label = activity.title + f" [{activity.moral_quality}]"
         if activity.moral_quality == models.Activity.MoralQuality.GOOD:
             if max_ok:
-                buff.attack += 3
-                buff.defense += 2
-                buff.speed += 1
+                stat_modifier.attack += 3
+                stat_modifier.defense += 2
+                stat_modifier.speed += 1
                 game_effect.game_state_delta.gold += 15
                 game_effect.messages.append("Good habit on time!")
+                buff_label += " (on time)"
             else:
-                buff.attack += 1
-                buff.defense += 1
+                stat_modifier.attack += 1
+                stat_modifier.defense += 1
                 game_effect.game_state_delta.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
         elif activity.moral_quality == models.Activity.MoralQuality.BAD:
             if not min_ok:
-                buff.attack += -3
-                buff.defense += -2
-                buff.speed += -1
+                stat_modifier.attack += -3
+                stat_modifier.defense += -2
+                stat_modifier.speed += -1
                 game_effect.messages.append("Bad habit too soon! Large penalty.")
             else:
-                buff.attack += -1
-                buff.defense += -1
+                stat_modifier.attack += -1
+                stat_modifier.defense += -1
                 game_effect.messages.append(
                     "Bad habit, but you held off — minor penalty."
                 )
+                buff_label += " (held off)"
         else:
             if min_ok and max_ok:
-                buff.attack += 2
-                buff.defense += 1
-                buff.speed += 0
+                stat_modifier.attack += 2
+                stat_modifier.defense += 1
+                stat_modifier.speed += 0
                 game_effect.game_state_delta.gold += 10
                 game_effect.messages.append("Neutral event on schedule!")
             else:
-                buff.attack += 1
+                stat_modifier.attack += 1
                 game_effect.game_state_delta.gold += 3
                 game_effect.messages.append(
                     "Neutral event but timing was off — reduced reward."
                 )
 
-        game_effect.hero_buff = game_effect.hero_buff + buff
+        for stat, amount in asdict(stat_modifier).values():
+            game_effect.hero_buffs.append(
+                Buff(stat=stat, amount=amount, label=buff_label)
+            )
         game_effect.spawn_enemy = SpawnEnemy(
-            level=(kill_streak // 3) + 1, modifiers=buff.times(-1)
+            level=(kill_streak // 3) + 1, stat_modifier=stat_modifier.times(-1)
         )
         return game_effect
 
