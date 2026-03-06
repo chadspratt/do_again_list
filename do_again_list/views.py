@@ -1,3 +1,4 @@
+import datetime
 import json
 from dataclasses import asdict
 from typing import Any, cast
@@ -19,6 +20,7 @@ from rest_framework.response import Response
 
 from . import serializers, services
 from .models import Activity, GameState, Occurance
+from .utils import humanize_timedelta, parse_time_offset
 
 # === Django Rest Framework Viewsets === #
 
@@ -269,24 +271,30 @@ def index(request):
 @require_GET
 def api_events(request):
     """Return all events as JSON."""
-    events = Activity.objects.order_by(F("end_time").desc(nulls_first=True))
-    data = [
-        {
-            "id": e.id,
-            "title": e.title,
-            "start_time": e.start_time.isoformat() if e.start_time else None,
-            "end_time": e.end_time.isoformat() if e.end_time else None,
-            "default_duration": e.default_duration,
-            "min_duration": e.min_duration,
-            "max_duration": e.max_duration,
-            "min_time_between_events": e.min_time_between_events,
-            "max_time_between_events": e.max_time_between_events,
-            "value": e.value,
-            "repeats": e.repeats,
-            "next_time": e.next_time.isoformat() if e.next_time else None,
-        }
-        for e in events
-    ]
+    events = Activity.objects.prefetch_related("occurances").all()
+    data = []
+    for e in events:
+        latest: Occurance = e.occurances.first()  # ordered by -end_time via Meta
+        data.append(
+            {
+                "id": e.id,
+                "title": e.title,
+                "start_time": latest.start_time.isoformat()
+                if latest and latest.start_time
+                else None,
+                "end_time": latest.end_time.isoformat()
+                if latest and latest.end_time
+                else None,
+                "default_duration": humanize_timedelta(e.default_duration) if e.default_duration is not None else None,
+                "min_duration": humanize_timedelta(e.min_duration) if e.min_duration is not None else None,
+                "max_duration": humanize_timedelta(e.max_duration) if e.max_duration is not None else None,
+                "min_time_between_events": humanize_timedelta(e.min_time_between_events) if e.min_time_between_events is not None else None,
+                "max_time_between_events": humanize_timedelta(e.max_time_between_events) if e.max_time_between_events is not None else None,
+                "value": e.value,
+                "repeats": e.repeats,
+                "next_time": e.next_time.isoformat() if e.next_time else None,
+            }
+        )
     return JsonResponse(data, safe=False)
 
 
@@ -349,29 +357,38 @@ def api_update_event(request, event_id):
 
         ms_since_last_event = 0
         old_next_time = event.next_time  # Capture before modifications for reward calc
-        # Only archive if the event already has an end_time set
-        if event.end_time is not None:
-            ms_since_last_event = (
-                timezone.now() - event.end_time
-            ).total_seconds() * 1000
+
+        latest: Occurance | None = event.occurances.first()  # ordered by -end_time via Meta
+
+        if latest is not None and latest.end_time is None:
+            # In-progress occurance — update it (don't touch start_time)
+            end_time_str = data.get("end_datetime", "").strip()
+            if end_time_str:
+                latest.end_time = dt_parser.isoparse(end_time_str)
+            elif action == "end":
+                latest.end_time = timezone.now()
+            latest.save()
+        else:
+            # Completed previous occurance or first-ever — create a new one
+            if latest is not None:
+                ms_since_last_event = (
+                    timezone.now() - latest.end_time
+                ).total_seconds() * 1000
+
+            start_time = dt_parser.isoparse(data["datetime"])
+            end_time_str = data.get("end_datetime", "").strip()
+            if end_time_str:
+                end_time = dt_parser.isoparse(end_time_str)
+            elif action == "start":
+                end_time = None
+            else:  # action == 'end'
+                end_time = timezone.now()
+
             Occurance.objects.create(
                 activity=event,
-                start_time=event.start_time,
-                end_time=event.end_time,
+                start_time=start_time,
+                end_time=end_time,
             )
-
-        # Update start_time unless this is an already in-progress event (has start, no end)
-        if event.end_time is not None or event.start_time is None:
-            event.start_time = dt_parser.isoparse(data["datetime"])
-
-        # Determine end_time
-        end_time_str = data.get("end_datetime", "").strip()
-        if end_time_str:
-            event.end_time = dt_parser.isoparse(end_time_str)
-        elif action == "start":
-            event.end_time = None
-        else:  # action == 'end'
-            event.end_time = timezone.now()
 
         # Handle next_time: set from request body if provided
         next_time_str = (
@@ -384,7 +401,7 @@ def api_update_event(request, event_id):
         elif action == "end" or action == "start":
             event.next_time = None  # Clear next_time when starting/ending
 
-        event.save()
+        event.save(update_fields=["next_time"])
 
         # Game rewards based on action and timing
         state = _get_game_state()
@@ -397,8 +414,8 @@ def api_update_event(request, event_id):
         gold_to_award = 5
 
         # Classify event: good / bad / neutral
-        min_interval_ms = parse_time_offset_ms(event.min_time_between_events)
-        max_interval_ms = parse_time_offset_ms(event.max_time_between_events)
+        min_interval_ms = event.min_time_between_events.total_seconds() * 1000 if event.min_time_between_events else 0
+        max_interval_ms = event.max_time_between_events.total_seconds() * 1000 if event.max_time_between_events else 0
         has_min = min_interval_ms > 0
         has_max = max_interval_ms > 0
 
@@ -548,19 +565,19 @@ def api_update_event_settings(request, event_id):
         event = get_object_or_404(Activity, id=event_id)
         fields = []
         if "default_duration" in data:
-            event.default_duration = int(data["default_duration"])
+            event.default_duration = parse_time_offset(data["default_duration"]) or datetime.timedelta(0)
             fields.append("default_duration")
         if "min_duration" in data:
-            event.min_duration = data["min_duration"].strip()
+            event.min_duration = parse_time_offset(data["min_duration"])
             fields.append("min_duration")
         if "max_duration" in data:
-            event.max_duration = data["max_duration"].strip()
+            event.max_duration = parse_time_offset(data["max_duration"])
             fields.append("max_duration")
         if "min_time_between_events" in data:
-            event.min_time_between_events = data["min_time_between_events"].strip()
+            event.min_time_between_events = parse_time_offset(data["min_time_between_events"])
             fields.append("min_time_between_events")
         if "max_time_between_events" in data:
-            event.max_time_between_events = data["max_time_between_events"].strip()
+            event.max_time_between_events = parse_time_offset(data["max_time_between_events"])
             fields.append("max_time_between_events")
         if "value" in data:
             event.value = float(data["value"])

@@ -160,12 +160,12 @@ class ActivityService:
             # compare when this occurance _ought_ to occur absent an explicit schedule
             time_since_last_occurance = at_time - latest_completed_occurance.end_time
             max_ok = (
-                activity.max_time_between_events is not None
-                and time_since_last_occurance <= activity.max_time_between_events
+                activity.max_time_between_events is None
+                or time_since_last_occurance <= activity.max_time_between_events
             )
             min_ok = (
-                activity.min_time_between_events is not None
-                and time_since_last_occurance >= activity.min_time_between_events
+                activity.min_time_between_events is None
+                or time_since_last_occurance >= activity.min_time_between_events
             )
 
         stat_modifier = StatModifier()
