@@ -237,9 +237,9 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 # === LEGACY === #
 
 
-def _get_game_state():
+def _get_game_state(owner_id):
     """Get or create the singleton game state."""
-    state, _ = GameState.objects.get_or_create(id=1)
+    state, _ = GameState.objects.get_or_create(id=owner_id)
     return state
 
 
@@ -303,6 +303,7 @@ def api_create_event(request):
     """Create a new event from JSON body."""
     try:
         data = json.loads(request.body)
+        owner_id = request.user.id
         title = data.get("title", "").strip()
         if not title:
             return JsonResponse({"success": False, "error": "Title is required."})
@@ -310,17 +311,17 @@ def api_create_event(request):
         repeats = data.get("repeats", True)
         date_str = data.get("date", "").strip()
         if pending or not date_str:
-            event = Activity.objects.create(title=title, repeats=repeats)
+            event = Activity.objects.create(title=title, repeats=repeats, owner_id=owner_id)
         else:
             from dateutil import parser
 
             event_date = parser.isoparse(date_str)
             event = Activity.objects.create(
-                title=title, start_time=event_date, repeats=repeats
+                title=title, start_time=event_date, repeats=repeats, owner_id=owner_id
             )
 
         # Game reward: +1 base attack for creating an event type
-        state = _get_game_state()
+        state = _get_game_state(owner_id)
         state.base_attack += 1
         state.save()
 
@@ -404,7 +405,7 @@ def api_update_event(request, event_id):
         event.save(update_fields=["next_time"])
 
         # Game rewards based on action and timing
-        state = _get_game_state()
+        state = _get_game_state(request.user.id)
         game_messages = []
         spawn_enemy = None
         hero_buffs = []
@@ -589,7 +590,7 @@ def api_update_event_settings(request, event_id):
             event.save(update_fields=fields)
 
         # No XP reward for configuring settings
-        state = _get_game_state()
+        state = _get_game_state(request.user.id)
         state.save()
 
         return JsonResponse({"success": True, "game": _game_state_dict(state)})
@@ -601,7 +602,7 @@ def api_update_event_settings(request, event_id):
 @require_GET
 def api_game_state(request):
     """Return the current game state."""
-    state = _get_game_state()
+    state = _get_game_state(request.user.id)
     return JsonResponse(_game_state_dict(state))
 
 
@@ -614,7 +615,7 @@ def api_sync_battle(request):
         xp = max(0, int(data.get("xp", 0)))
         streak = max(0, int(data.get("streak", 0)))
         hero_hp = int(data.get("hero_hp", -1))
-        state = _get_game_state()
+        state = _get_game_state(request.user.id)
         state.gold += gold
         state.streak = streak
         state.hero_hp = hero_hp
