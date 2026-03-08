@@ -1,14 +1,11 @@
-import datetime
 import json
 from dataclasses import asdict
 from typing import Any, cast
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models import F
+from django.db.models.manager import BaseManager
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 from django_filters import rest_framework as filters
@@ -51,9 +48,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ActivitySerializer
     filterset_class = ActivityFilter
 
-    def get_queryset(self):
+    def get_queryset(self) -> BaseManager[Activity]: # type: ignore
         user = self.request.user
-        return Activity.objects.filter(owner=user)
+        return Activity.objects.filter(owner=user).prefetch_related("occurances")
 
     def _get_response_serializer(
         self, *, game_effect: services.GameEffect
@@ -62,23 +59,26 @@ class ActivityViewSet(viewsets.ModelViewSet):
         game_state = services.GameStateService().update(
             game_state=game_state, game_effect=game_effect
         )
-        serializer = serializers.ActivityResponseSerializer(
-            data={
-                "game": serializers.GameStateSerializer(game_state).data,
-                "success": True,
-                "error": None,
-                "messages": game_effect.messages,
-                "spawn_enemy": asdict(game_effect.spawn_enemy)
-                if game_effect.spawn_enemy is not None
-                else None,
-                "hero_buffs": [asdict(buff) for buff in game_effect.hero_buffs],
-                "pending_heal": game_effect.pending_heal,
-                "pending_fatigue": game_effect.pending_fatigue,
-                "resource_ref": asdict(game_effect.resource_ref)
-                if game_effect.resource_ref is not None
-                else None,
-            },
-            context={},
+        serializer: serializers.ActivityResponseSerializer = cast(
+            serializers.ActivityResponseSerializer,
+            serializers.ActivityResponseSerializer(
+                data={
+                    "game": game_state,
+                    "success": True,
+                    "error": None,
+                    "messages": game_effect.messages,
+                    "spawn_enemy": asdict(game_effect.spawn_enemy)
+                    if game_effect.spawn_enemy is not None
+                    else None,
+                    "hero_buffs": [asdict(buff) for buff in game_effect.hero_buffs],
+                    "pending_heal": game_effect.pending_heal,
+                    "pending_fatigue": game_effect.pending_fatigue,
+                    "resource_ref": asdict(game_effect.resource_ref)
+                    if game_effect.resource_ref is not None
+                    else None,
+                },
+                context={},
+            )
         )
         serializer.is_valid(raise_exception=True)
         return serializer
@@ -150,7 +150,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
         return self._generic_activity_action(
             activity=self.get_object(),
             action="end",
-            allowable_states=(Activity.State.ACTIVE,),
+            allowable_states=(
+                Activity.State.ACTIVE,
+                Activity.State.INACTIVE,
+                Activity.State.PENDING,
+            ),
         )
 
     @extend_schema(
@@ -192,7 +196,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             return Response(serializer.data, status=400)
-        serializer = self.get_serializer(data=self.request.data)
+        serializer = self.get_serializer(data=self.request.data) # type: ignore
         serializer.is_valid(raise_exception=True)
         try:
             game_effect = getattr(services.ActivityService(), action)(
@@ -220,7 +224,7 @@ class OccuranceViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.OccuranceSerializer
     filterset_class = OccuranceFilter
 
-    def get_queryset(self):
+    def get_queryset(self) -> BaseManager[Occurance]: # type: ignore
         user = self.request.user
         return Occurance.objects.filter(activity__owner=user)
 
@@ -229,401 +233,24 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = GameState.objects.all()
     serializer_class = serializers.GameStateSerializer
 
-    def get_queryset(self):
+    def get_queryset(self) -> BaseManager[GameState]: # type: ignore
         user = self.request.user
         return GameState.objects.filter(owner=user)
 
-
-# === LEGACY === #
-
-
-def _get_game_state(owner_id):
-    """Get or create the singleton game state."""
-    state, _ = GameState.objects.get_or_create(id=owner_id)
-    return state
-
-
-def _game_state_dict(state):
-    return {
-        "xp": state.xp,
-        "gold": state.gold,
-        "level": state.level,
-        "base_attack": state.base_attack,
-        "base_defense": state.base_defense,
-        "base_speed": state.base_speed,
-        "total_attack": state.total_attack(),
-        "total_defense": state.total_defense(),
-        "total_speed": state.total_speed(),
-        "xp_to_next_level": state.xp_to_next_level(),
-        "streak": state.streak,
-        "items": state.items,
-        "hero_hp": state.hero_hp,
-    }
-
-
-@ensure_csrf_cookie
-def index(request):
-    """Serve the React SPA."""
-    return render(request, "do_again_list/index.html")
-
-
-@ensure_csrf_cookie
-@require_GET
-def api_events(request):
-    """Return all events as JSON."""
-    events = Activity.objects.prefetch_related("occurances").all()
-    data = []
-    for e in events:
-        latest: Occurance = e.occurances.first()  # ordered by -end_time via Meta
-        data.append(
-            {
-                "id": e.id,
-                "title": e.title,
-                "start_time": latest.start_time.isoformat()
-                if latest and latest.start_time
-                else None,
-                "end_time": latest.end_time.isoformat()
-                if latest and latest.end_time
-                else None,
-                "default_duration": humanize_timedelta(e.default_duration) if e.default_duration is not None else None,
-                "min_duration": humanize_timedelta(e.min_duration) if e.min_duration is not None else None,
-                "max_duration": humanize_timedelta(e.max_duration) if e.max_duration is not None else None,
-                "min_time_between_events": humanize_timedelta(e.min_time_between_events) if e.min_time_between_events is not None else None,
-                "max_time_between_events": humanize_timedelta(e.max_time_between_events) if e.max_time_between_events is not None else None,
-                "value": e.value,
-                "repeats": e.repeats,
-                "next_time": e.next_time.isoformat() if e.next_time else None,
-            }
-        )
-    return JsonResponse(data, safe=False)
-
-
-@require_POST
-def api_create_event(request):
-    """Create a new event from JSON body."""
-    try:
-        data = json.loads(request.body)
-        owner_id = request.user.id
-        title = data.get("title", "").strip()
-        if not title:
-            return JsonResponse({"success": False, "error": "Title is required."})
-        pending = data.get("pending", False)
-        repeats = data.get("repeats", True)
-        date_str = data.get("date", "").strip()
-        if pending or not date_str:
-            event = Activity.objects.create(title=title, repeats=repeats, owner_id=owner_id)
-        else:
-            from dateutil import parser
-
-            event_date = parser.isoparse(date_str)
-            event = Activity.objects.create(
-                title=title, start_time=event_date, repeats=repeats, owner_id=owner_id
-            )
-
-        # Game reward: +1 base attack for creating an event type
-        state = _get_game_state(owner_id)
-        state.base_attack += 1
-        state.save()
-
-        return JsonResponse(
-            {"success": True, "id": event.id, "game": _game_state_dict(state)}
-        )
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-@require_POST
-def api_update_event(request, event_id):
-    """Update an event's times. Supports 'start', 'end', and 'set_next' actions."""
-    try:
-        data = json.loads(request.body)
-        event = get_object_or_404(Activity, id=event_id)
-        action = data.get("action", "end")
-
-        from dateutil import parser as dt_parser
-
-        # Handle set_next action: only update next_time, nothing else
-        if action == "set_next":
-            next_time_str = (
-                data.get("next_time", "").strip()
-                if isinstance(data.get("next_time", ""), str)
-                else ""
-            )
-            if next_time_str:
-                event.next_time = dt_parser.isoparse(next_time_str)
-            else:
-                event.next_time = None
-            event.save(update_fields=["next_time"])
-            return JsonResponse({"success": True})
-
-        ms_since_last_event = 0
-        old_next_time = event.next_time  # Capture before modifications for reward calc
-
-        latest: Occurance | None = event.occurances.first()  # ordered by -end_time via Meta
-
-        if latest is not None and latest.end_time is None:
-            # In-progress occurance — update it (don't touch start_time)
-            end_time_str = data.get("end_datetime", "").strip()
-            if end_time_str:
-                latest.end_time = dt_parser.isoparse(end_time_str)
-            elif action == "end":
-                latest.end_time = timezone.now()
-            latest.save()
-        else:
-            # Completed previous occurance or first-ever — create a new one
-            if latest is not None:
-                ms_since_last_event = (
-                    timezone.now() - latest.end_time
-                ).total_seconds() * 1000
-
-            start_time = dt_parser.isoparse(data["datetime"])
-            end_time_str = data.get("end_datetime", "").strip()
-            if end_time_str:
-                end_time = dt_parser.isoparse(end_time_str)
-            elif action == "start":
-                end_time = None
-            else:  # action == 'end'
-                end_time = timezone.now()
-
-            Occurance.objects.create(
-                activity=event,
-                start_time=start_time,
-                end_time=end_time,
-            )
-
-        # Handle next_time: set from request body if provided
-        next_time_str = (
-            data.get("next_time", "").strip()
-            if isinstance(data.get("next_time", ""), str)
-            else ""
-        )
-        if next_time_str:
-            event.next_time = dt_parser.isoparse(next_time_str)
-        elif action == "end" or action == "start":
-            event.next_time = None  # Clear next_time when starting/ending
-
-        event.save(update_fields=["next_time"])
-
-        # Game rewards based on action and timing
-        state = _get_game_state(request.user.id)
-        game_messages = []
-        spawn_enemy = None
-        hero_buffs = []
-
-        from .utils import parse_time_offset_ms
-
-        gold_to_award = 5
-
-        # Classify event: good / bad / neutral
-        min_interval_ms = event.min_time_between_events.total_seconds() * 1000 if event.min_time_between_events else 0
-        max_interval_ms = event.max_time_between_events.total_seconds() * 1000 if event.max_time_between_events else 0
-        has_min = min_interval_ms > 0
-        has_max = max_interval_ms > 0
-
-        if has_max and not has_min:
-            event_kind = "good"
-        elif has_min and not has_max:
-            event_kind = "bad"
-        else:
-            event_kind = "neutral"
-
-        # If previous occurrence had next_time set and event had end_time,
-        # override min/max timing compliance with the next_time deadline.
-        use_next_time_override = old_next_time is not None and ms_since_last_event > 0
-
-        # Timing compliance (only meaningful when we have a previous end_time)
-        if use_next_time_override:
-            # next_time is an absolute deadline — did the user act before it?
-            acted_before_deadline = timezone.now() <= old_next_time  # type: ignore
-            min_ok = True  # next_time doesn't impose a minimum
-            max_ok = acted_before_deadline
-        else:
-            min_ok = not has_min or ms_since_last_event >= min_interval_ms
-            max_ok = not has_max or ms_since_last_event <= max_interval_ms
-        # First-ever occurrence counts as compliant
-        if ms_since_last_event == 0:
-            min_ok = True
-            max_ok = True
-
-        if action == "start":
-            pass  # no reward on start
-        elif action == "end":
-            # Enemy level based on current kill streak sent by client
-            kill_streak = int(data.get("kill_streak", 0))
-            enemy_level = (kill_streak // 3) + 1
-
-            # ── Compute stat delta based on event kind + timing ──
-            delta = {"attack": 0, "defense": 0, "speed": 0}
-
-            if event_kind == "good":
-                if max_ok:
-                    # On time: full reward
-                    delta = {"attack": 3, "defense": 2, "speed": 1}
-                    gold_to_award += 15
-                    game_messages.append("Good habit on time!")
-                else:
-                    # Late: smaller reward
-                    delta = {"attack": 1, "defense": 1, "speed": 0}
-                    gold_to_award += 5
-                    game_messages.append("Good habit but late — reduced reward.")
-
-            elif event_kind == "bad":
-                if not min_ok:
-                    # Too soon: larger penalty
-                    delta = {"attack": -3, "defense": -2, "speed": -1}
-                    gold_to_award = 0
-                    game_messages.append("Bad habit too soon! Large penalty.")
-                else:
-                    # Waited long enough: smaller penalty
-                    delta = {"attack": -1, "defense": -1, "speed": 0}
-                    gold_to_award += 5
-                    game_messages.append("Bad habit, but you held off — minor penalty.")
-
-            else:  # neutral
-                if min_ok and max_ok:
-                    # Fully compliant
-                    delta = {"attack": 2, "defense": 1, "speed": 1}
-                    gold_to_award += 10
-                    game_messages.append("Neutral event on schedule!")
-                else:
-                    # Violated a bound
-                    delta = {"attack": 1, "defense": 0, "speed": 0}
-                    gold_to_award += 3
-                    game_messages.append(
-                        "Neutral event but timing was off — reduced reward."
-                    )
-
-            # Hero buffs (positive deltas) and debuffs (negative deltas)
-            buff_parts = []
-            for stat, amount in delta.items():
-                if amount != 0:
-                    label = (
-                        f"{event_kind.title()}"
-                        f"{' (on time)' if event_kind == 'good' and max_ok else ''}"
-                        f"{' (held off)' if event_kind == 'bad' and min_ok else ''}"
-                    )
-                    hero_buffs.append({"stat": stat, "amount": amount, "label": label})
-
-                    if amount > 0:
-                        buff_parts.append(f"+{amount} {stat}")
-                    elif amount < 0:
-                        buff_parts.append(f"{amount} {stat}")
-
-            # Enemy stat modifier is the opposite of hero delta
-            enemy_stat_mod = {
-                "attack": -delta["attack"],
-                "defense": -delta["defense"],
-                "speed": -delta["speed"],
-            }
-            spawn_enemy = {
-                "level": enemy_level,
-                "stat_modifier": enemy_stat_mod,
-            }
-
-            # Describe what happened
-            if buff_parts:
-                game_messages.append("Hero: " + ", ".join(buff_parts))
-
-        msgs = []
-        state.gold += gold_to_award
-        game_messages.extend(msgs)
-
-        state.save()
-
-        return JsonResponse(
-            {
-                "success": True,
-                "game": _game_state_dict(state),
-                "game_messages": game_messages,
-                "spawn_enemy": spawn_enemy,
-                "hero_buffs": hero_buffs,
-                "pending_heal": action == "end" and event_kind == "good" and max_ok,
-                "pending_fatigue": action == "end"
-                and event_kind == "bad"
-                and not min_ok,
-            }
-        )
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-@require_POST
-def api_delete_event(request, event_id):
-    """Delete an event."""
-    try:
-        event = get_object_or_404(Activity, id=event_id)
-        event.delete()
-        return JsonResponse({"success": True})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-@require_POST
-def api_update_event_settings(request, event_id):
-    """Update timing settings for an event."""
-    try:
-        data = json.loads(request.body)
-        event = get_object_or_404(Activity, id=event_id)
-        fields = []
-        if "default_duration" in data:
-            event.default_duration = parse_time_offset(data["default_duration"]) or datetime.timedelta(0)
-            fields.append("default_duration")
-        if "min_duration" in data:
-            event.min_duration = parse_time_offset(data["min_duration"])
-            fields.append("min_duration")
-        if "max_duration" in data:
-            event.max_duration = parse_time_offset(data["max_duration"])
-            fields.append("max_duration")
-        if "min_time_between_events" in data:
-            event.min_time_between_events = parse_time_offset(data["min_time_between_events"])
-            fields.append("min_time_between_events")
-        if "max_time_between_events" in data:
-            event.max_time_between_events = parse_time_offset(data["max_time_between_events"])
-            fields.append("max_time_between_events")
-        if "value" in data:
-            event.value = float(data["value"])
-            fields.append("value")
-        if "repeats" in data:
-            event.repeats = bool(data["repeats"])
-            fields.append("repeats")
-        if fields:
-            event.save(update_fields=fields)
-
-        # No XP reward for configuring settings
-        state = _get_game_state(request.user.id)
-        state.save()
-
-        return JsonResponse({"success": True, "game": _game_state_dict(state)})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
-
-
-@ensure_csrf_cookie
-@require_GET
-def api_game_state(request):
-    """Return the current game state."""
-    state = _get_game_state(request.user.id)
-    return JsonResponse(_game_state_dict(state))
-
-
-@require_POST
-def api_sync_battle(request):
-    """Sync battle results (gold earned, xp earned, current streak) to the game state."""
-    try:
-        data = json.loads(request.body)
-        gold = max(0, int(data.get("gold", 0)))
-        xp = max(0, int(data.get("xp", 0)))
-        streak = max(0, int(data.get("streak", 0)))
-        hero_hp = int(data.get("hero_hp", -1))
-        state = _get_game_state(request.user.id)
-        state.gold += gold
-        state.streak = streak
-        state.hero_hp = hero_hp
-        state.add_xp(xp)
-        state.save()
-        return JsonResponse({"success": True, "game": _game_state_dict(state)})
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+    @action(detail=False, methods=["post"])
+    def sync(self, request: Request) -> Response:
+        """Sync battle results (gold earned, xp earned, current streak, hero HP)."""
+        game_state, _ = GameState.objects.get_or_create(owner=request.user)
+        gold = max(0, int(request.data.get("gold", 0))) # type: ignore
+        xp = max(0, int(request.data.get("xp", 0))) # type: ignore
+        streak = max(0, int(request.data.get("streak", 0))) # type: ignore
+        hero_hp = int(request.data.get("hero_hp", -1)) # type: ignore
+        game_state.gold += gold
+        game_state.streak = streak
+        game_state.hero_hp = hero_hp
+        game_state.add_xp(xp)
+        game_state.save()
+        return Response(serializers.GameStateSerializer(game_state).data)
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────

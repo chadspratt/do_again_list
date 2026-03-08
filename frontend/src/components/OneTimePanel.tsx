@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { DoAgainEvent } from '../types';
-import { computeTimerText, parseTimeOffset, parseTimeOffsetMs } from '../utils';
+import { computeTimerText } from '../utils';
+import { useEventInputs } from '../hooks/useEventInputs';
 
 interface OneTimePanelProps {
   events: DoAgainEvent[];
   now: number;
-  onUpdate: (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => void;
+  onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
 }
@@ -23,9 +24,12 @@ function OneTimeCard({
   onDelete: OneTimePanelProps['onDelete'];
   onOpenSettings: OneTimePanelProps['onOpenSettings'];
 }) {
-  const [startInput, setStartInput] = useState('');
-  const [endInput, setEndInput] = useState('');
-  const [nextInput, setNextInput] = useState('');
+  const {
+    startInput, setStartInput,
+    endInput, setEndInput,
+    nextInput, setNextInput,
+    handleStart, handleEnd, handleNext
+  } = useEventInputs(event.id, onUpdate);
   const [isHovered, setIsHovered] = useState(false);
 
   const isPending = event.start_time === null && event.end_time === null;
@@ -41,30 +45,6 @@ function OneTimeCard({
         event.max_time_between_events,
         event.next_time,
       );
-
-  function handleStart() {
-    const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
-    onUpdate(event.id, 'start', startDate.toISOString());
-    setStartInput('');
-  }
-
-  function handleEnd() {
-    const endDate = endInput.trim() ? parseTimeOffset(endInput) : null;
-    const startDate = startInput.trim() ? parseTimeOffset(startInput) : new Date();
-    const nextTime = nextInput.trim()
-      ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
-      : undefined;
-    onUpdate(
-      event.id,
-      'end',
-      startDate.toISOString(),
-      endDate ? endDate.toISOString() : undefined,
-      nextTime,
-    );
-    setStartInput('');
-    setEndInput('');
-    setNextInput('');
-  }
 
   return (
     <div
@@ -103,15 +83,7 @@ function OneTimeCard({
               value={nextInput}
               onChange={(e) => setNextInput(e.target.value)}
             />
-            <button className="btn btn-secondary btn-sm" onClick={() => {
-              const nextTime = nextInput.trim()
-                ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
-                : undefined;
-              if (nextTime) {
-                onUpdate(event.id, 'set_next', new Date().toISOString(), undefined, nextTime);
-                setNextInput('');
-              }
-            }}>Next</button>
+            <button className="btn btn-secondary btn-sm" onClick={handleNext}>Next</button>
           </div>
         </div>
       )}

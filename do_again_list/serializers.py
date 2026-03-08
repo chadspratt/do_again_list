@@ -10,10 +10,10 @@ class HumanReadableDurationField(serializers.DurationField):
     def to_representation(self, value: datetime.timedelta) -> str:
         return humanize_timedelta(value)
 
-    def to_internal_value(self, data: datetime.timedelta | str) -> datetime.timedelta:
-        if isinstance(data, datetime.timedelta):
-            return data
-        internal = parse_time_offset(data)
+    def to_internal_value(self, value: datetime.timedelta | str) -> datetime.timedelta:
+        if isinstance(value, datetime.timedelta):
+            return value
+        internal = parse_time_offset(value)
         if internal is None:
             return datetime.timedelta()
         return internal
@@ -29,10 +29,14 @@ class ActivitySerializer(serializers.ModelSerializer):
     min_time_between_events = HumanReadableDurationField(
         allow_null=True, required=False
     )
+    start_time = serializers.SerializerMethodField()
+    end_time = serializers.SerializerMethodField()
+    state = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Activity
         fields = (
+            "id",
             "title",
             "ordering",
             "default_duration",
@@ -43,7 +47,26 @@ class ActivitySerializer(serializers.ModelSerializer):
             "min_time_between_events",
             "value",
             "repeats",
+            "start_time",
+            "end_time",
+            "state",
         )
+        read_only_fields = ("id", "start_time", "end_time", "state")
+
+    def get_start_time(self, obj: models.Activity) -> str | None:
+        latest = obj.occurances.first()  # ordered by -end_time via Meta
+        if latest and latest.start_time:
+            return latest.start_time.isoformat()
+        return None
+
+    def get_end_time(self, obj: models.Activity) -> str | None:
+        latest = obj.occurances.first()
+        if latest and latest.end_time:
+            return latest.end_time.isoformat()
+        return None
+
+    def get_state(self, obj: models.Activity) -> str:
+        return obj.state
 
 
 class OccuranceSerializer(serializers.ModelSerializer):
@@ -53,14 +76,46 @@ class OccuranceSerializer(serializers.ModelSerializer):
 
 
 class GameStateSerializer(serializers.ModelSerializer):
+    total_attack = serializers.SerializerMethodField()
+    total_defense = serializers.SerializerMethodField()
+    total_speed = serializers.SerializerMethodField()
+    xp_to_next_level = serializers.SerializerMethodField()
+
     class Meta:
         model = models.GameState
         exclude = ("owner",)
 
+    def get_total_attack(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("total_attack", 0)
+        return obj.total_attack()
+
+    def get_total_defense(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("total_defense", 0)
+        return obj.total_defense()
+
+    def get_total_speed(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("total_speed", 0)
+        return obj.total_speed()
+
+    def get_xp_to_next_level(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("xp_to_next_level", 0)
+        return obj.xp_to_next_level()
+
+    def to_internal_value(self, data: object) -> object:
+        if isinstance(data, models.GameState):
+            return data
+        return super().to_internal_value(data)  # type: ignore
+
 
 class ActivityActionSerializer(serializers.Serializer):
     kill_streak = serializers.IntegerField(default=0)
-    at_time = serializers.DateTimeField()
+    start_time = serializers.DateTimeField(allow_null=True, required=False)
+    end_time = serializers.DateTimeField(allow_null=True, required=False)
+    next_time = serializers.DateTimeField(allow_null=True, required=False)
 
 
 class StatModifierSerializer(serializers.Serializer):
@@ -98,7 +153,7 @@ class ActivityResponseSerializer(serializers.Serializer):
     game = GameStateSerializer(allow_null=True)
     messages = serializers.ListField(child=serializers.CharField())
     spawn_enemy = SpawnEnemySerializer(allow_null=True)
-    hero_buffs = StatModifierSerializer()
+    hero_buffs = BuffSerializer(many=True)
     pending_heal = serializers.BooleanField()
     pending_fatigue = serializers.BooleanField()
     resource_ref = ResourceRefSerializer(allow_null=True)

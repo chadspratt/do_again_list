@@ -6,7 +6,7 @@ import { syncBattleState } from '../api';
 
 export interface BattleLaneHandle {
   spawnEnemy: (level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) => void;
-  applyBuff: (stat: 'attack' | 'defense' | 'speed', amount: number, label: string) => void;
+  applyBuff: (stat: 'ATTACK' | 'DEFENSE' | 'SPEED', amount: number, label: string) => void;
   healHero: () => void;
   fatigueHero: () => void;
   getKillStreak: () => number;
@@ -61,7 +61,7 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
       const battle = battleRef.current;
       if (battle) spawnEnemyFromEvent(battle, level, statModifier);
     },
-    applyBuff(stat: 'attack' | 'defense' | 'speed', amount: number, label: string) {
+    applyBuff(stat: 'ATTACK' | 'DEFENSE' | 'SPEED', amount: number, label: string) {
       const battle = battleRef.current;
       if (battle) applyBuff(battle, stat, amount, label);
     },

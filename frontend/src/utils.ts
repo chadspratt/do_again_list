@@ -22,7 +22,7 @@ export function parseTimeOffsetMs(input: string): number {
  * Parse a time offset string and return a Date that many ms before now.
  * Returns current date if blank.
  */
-export function parseTimeOffset(input: string): Date {
+export function subtractTimeOffset(input: string): Date {
   if (!input || input.trim() === '') return new Date();
   return new Date(Date.now() - parseTimeOffsetMs(input));
 }

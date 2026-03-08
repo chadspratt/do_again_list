@@ -77,7 +77,7 @@ export default function App() {
     game?: GameState;
     messages?: string[];
     spawn_enemy?: { level: number; stat_modifier?: { attack?: number; defense?: number; speed?: number } } | null;
-    hero_buffs?: { stat: 'attack' | 'defense' | 'speed'; amount: number; label: string }[];
+    hero_buffs?: { stat: 'ATTACK' | 'DEFENSE' | 'SPEED'; amount: number; label: string }[];
     pending_heal?: boolean;
     pending_fatigue?: boolean;
   }) => {
@@ -123,9 +123,9 @@ export default function App() {
   );
 
   const handleUpdate = useCallback(
-    async (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => {
+    async (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => {
       const killStreak = battleLaneRef.current?.getKillStreak() ?? 0;
-      const result = await updateEvent(eventId, action, datetime, endDatetime, killStreak, nextTime);
+      const result = await updateEvent(eventId, action, startDatetime, endDatetime, nextTime, killStreak);
       if (result.success) {
         await loadEvents();
         applyGameResponse(result);

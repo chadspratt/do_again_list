@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 from dataclasses import asdict, dataclass, field, fields
 from typing import Literal
 
@@ -66,9 +67,14 @@ class ResourceRef:
 #     hero.defense = gs.total_defense + buffBonus(state.buffs, 'defense');
 @dataclass
 class Buff:
-    stat: Literal["attack", "defense", "speed"]
+    stat: Stat
     amount: int
     label: str
+
+class Stat(enum.Enum):
+    ATTACK = "attack"
+    DEFENSE = "defense"
+    SPEED = "speed"
 
 
 @dataclass
@@ -106,7 +112,7 @@ class ActivityService:
             return None
 
     def start(
-        self, *, activity: models.Activity, at_time: datetime.datetime, **kwargs
+        self, *, activity: models.Activity, start_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
         created = False
@@ -115,14 +121,14 @@ class ActivityService:
         except models.Occurance.DoesNotExist:
             created = True
             occurance = models.Occurance.objects.create(
-                activity=activity, start_time=at_time
+                activity=activity, start_time=start_time
             )
         if not created and occurance.start_time:
             # this occurrance already existed with a start time
             # Checks at the view level should prevent this
             raise ActivityLifecycleException("Cannot start an active activity")
 
-        occurance.start_time = at_time
+        occurance.start_time = start_time
         occurance.save()
 
         return game_effect
@@ -131,7 +137,9 @@ class ActivityService:
         self,
         *,
         activity: models.Activity,
-        at_time: datetime.datetime,
+        end_time: datetime.datetime,
+        start_time: datetime.datetime | None = None,
+        next_time: datetime.datetime | None = None,
         kill_streak: int = 0,
         **kwargs,
     ):
@@ -140,38 +148,45 @@ class ActivityService:
             activity=activity
         )
 
-        occurance = models.Occurance.objects.filter(
-            activity=activity, end_time__isnull=True
-        ).first()
+        previous_next_time = activity.next_time
+        activity.next_time = next_time
+        activity.save()
+        try:
+            occurance = models.Occurance.objects.get(activity=activity, end_time=None)
+        except models.Occurance.DoesNotExist:
+            # if start_time is None then use default_duration to calculate a start_time
+            start_time = start_time if start_time else end_time - activity.default_duration
+            occurance = models.Occurance.objects.create(
+                activity=activity, start_time=start_time, end_time=end_time, planned_time=previous_next_time
+            )
         if occurance is None:
             # A task was ended which was never started!
             raise ActivityLifecycleException("Cannot end an inactive activity")
-        occurance.end_time = at_time
+        occurance.end_time = end_time
         occurance.save()
 
-        max_ok = True
-        min_ok = True
+        interval_ok = True
+        duration_ok = True
         # Apply bonuses
-        if activity.next_time is not None:
+        if previous_next_time is not None:
             # compare when this occurance was scheduled to begin
-            max_ok = occurance.start_time < activity.next_time
-            min_ok = True
-        elif latest_completed_occurance is not None:
+            interval_ok = occurance.start_time < previous_next_time
+        if activity.max_duration is not None:
+            duration_ok = end_time - occurance.start_time <= activity.max_duration
+        if activity.min_duration is not None:
+            duration_ok &= end_time - occurance.start_time >= activity.min_duration
+        if latest_completed_occurance is not None:
             # compare when this occurance _ought_ to occur absent an explicit schedule
-            time_since_last_occurance = at_time - latest_completed_occurance.end_time
-            max_ok = (
-                activity.max_time_between_events is None
-                or time_since_last_occurance <= activity.max_time_between_events
-            )
-            min_ok = (
-                activity.min_time_between_events is None
-                or time_since_last_occurance >= activity.min_time_between_events
-            )
+            time_since_last_occurance = end_time - latest_completed_occurance.end_time # type: ignore
+            if activity.max_time_between_events is not None:
+                interval_ok &= time_since_last_occurance <= activity.max_time_between_events
+            if activity.min_time_between_events is not None:
+                interval_ok &= time_since_last_occurance >= activity.min_time_between_events
 
         stat_modifier = StatModifier()
         buff_label = activity.title + f" [{activity.moral_quality}]"
         if activity.moral_quality == models.Activity.MoralQuality.GOOD:
-            if max_ok:
+            if interval_ok:
                 stat_modifier.attack += 3
                 stat_modifier.defense += 2
                 stat_modifier.speed += 1
@@ -184,7 +199,7 @@ class ActivityService:
                 game_effect.game_state_delta.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
         elif activity.moral_quality == models.Activity.MoralQuality.BAD:
-            if not min_ok:
+            if not interval_ok:
                 stat_modifier.attack += -3
                 stat_modifier.defense += -2
                 stat_modifier.speed += -1
@@ -197,7 +212,7 @@ class ActivityService:
                 )
                 buff_label += " (held off)"
         else:
-            if min_ok and max_ok:
+            if interval_ok:
                 stat_modifier.attack += 2
                 stat_modifier.defense += 1
                 stat_modifier.speed += 0
@@ -210,7 +225,8 @@ class ActivityService:
                     "Neutral event but timing was off — reduced reward."
                 )
 
-        for stat, amount in asdict(stat_modifier).values():
+        for stat, amount in asdict(stat_modifier).items():
+            stat = Stat[stat.upper()]
             game_effect.hero_buffs.append(
                 Buff(stat=stat, amount=amount, label=buff_label)
             )
@@ -220,10 +236,10 @@ class ActivityService:
         return game_effect
 
     def set_next(
-        self, *, activity: models.Activity, at_time: datetime.datetime, **kwargs
+        self, *, activity: models.Activity, next_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
-        activity.next_time = at_time
+        activity.next_time = next_time
         activity.save()
         return game_effect
 

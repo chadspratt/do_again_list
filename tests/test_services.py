@@ -16,7 +16,7 @@ class TestActivityService:
         # AND the occurance start time will match the given value
         assert activity.occurances.count() == 0
         given_time = timezone.now()
-        s.ActivityService().start(activity=activity, at_time=given_time)
+        s.ActivityService().start(activity=activity, start_time=given_time)
         assert activity.occurances.count() == 1
         assert activity.occurances.all()[0].start_time == given_time
 
@@ -29,7 +29,7 @@ class TestActivityService:
         occurance_factory(start_time=timezone.now())
         given_time = timezone.now()
         with pytest.raises(Exception):
-            s.ActivityService().start(activity=activity, at_time=given_time)
+            s.ActivityService().start(activity=activity, start_time=given_time)
 
     def test_start__with_end_time(
         self, activity, occurance_factory: Callable[..., m.Occurance]
@@ -41,7 +41,7 @@ class TestActivityService:
         old_time = timezone.now() - datetime.timedelta(minutes=10)
         occurance = occurance_factory(start_time=old_time, end_time=old_time)
         given_time = timezone.now()
-        s.ActivityService().start(activity=activity, at_time=given_time)
+        s.ActivityService().start(activity=activity, start_time=given_time)
         assert activity.occurances.count() == 2
         occurances = set(activity.occurances.all())
         # will not raise KeyError
@@ -71,7 +71,6 @@ class TestGameStateService:
             base_attack=1,
             base_defense=1,
             base_speed=1,
-            best_distance=110,
             streak=5,
             hero_hp=5,
         )
@@ -87,7 +86,6 @@ class TestGameStateService:
         assert game_state.base_attack == 11
         assert game_state.base_defense == -1
         assert game_state.base_speed == 13
-        assert game_state.best_distance == 110
         assert game_state.streak == 6
         assert game_state.hero_hp == 10
 

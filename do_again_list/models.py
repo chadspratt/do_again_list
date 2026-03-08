@@ -65,6 +65,7 @@ class Occurance(models.Model):
     activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE, related_name="occurances"
     )
+    planned_time = models.DateTimeField(null=True, blank=True)
     start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(null=True, blank=True)
 
@@ -81,7 +82,6 @@ class GameState(models.Model):
     base_attack = models.IntegerField(default=1)
     base_defense = models.IntegerField(default=0)
     base_speed = models.IntegerField(default=1)
-    best_distance = models.IntegerField(default=0)
     streak = models.IntegerField(default=0)
     items = models.JSONField(default=list)
     hero_hp = models.IntegerField(default=-1)  # -1 = not persisted yet, use full HP
