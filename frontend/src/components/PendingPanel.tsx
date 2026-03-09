@@ -1,33 +1,3 @@
-/*
- * PS: This component's behavior doesn't make sense to me.
- *
- * It seems to offer 3 fields and 3 buttons which route to 1 API code path.
- * - One of the buttons uses all three fields (potentially)
- * - One of the buttons definitely only uses one field
- * - One of the buttons uses one field (which is potentially null) and sends an
- *   arbitrary unused field along for the ride.
- *
- * From the UI/UX perspective, the component may be confusing to users because
- * some buttons use all the data while other buttons only use the field they are
- * adjacent to.
- *
- * The polymorphism of that data requires the API to be needlessly complex.
- * Recommend refactor such that the three distinct actions use three distinct API code
- * paths. The API provides actions on the activity for `start`, `end`, and `set_next`.
- * Either:
- * - Redesign the user flow to limit the actions available to the user based on
- *   activity state: (preferred)
- *   - only show end when a task is active
- *   - only show start when a task is inactive/pending
- *   - allow next time to be set through a different path altogether since it
- *     is not coupled to start or end
- * - Utilize these directly to sequentially perform the several actions that any one
- *   button press may imply. (least effort)
- * - Update the API actions to accept additional (and correctly named) inputs
- *   for each of the times that the user may specify in the transaction.
- *
- */
-
 import { useState } from 'react';
 import type { DoAgainEvent } from '../types';
 import { useEventInputs } from '../hooks/useEventInputs';
