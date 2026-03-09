@@ -86,7 +86,7 @@ Recommendations for `my-integrated-project/Dockerfile` are available upon reques
 - switch to service architecture for mutating models (`models.GameState` -> `services.GameStateService.add_xp(game_state, amount)`)
 - switch to using standard library date parsing (rather than having shadow `dateutil` dependency)
 - Defer user registration/auth to project (not app level concern)
-- remove unused `do_again_list/templates/do_again_list/dashboard.html`
+- [x] remove unused `do_again_list/templates/do_again_list/dashboard.html`
 - [x] rework API to be more restful:
   - paths: `/api/<module>/<resource>/<id>/<action>`. First token should be set by project.
   - correctly use HTTP verbs (GET, PATCH, POST, DELETE) rather than mangling GET endpoints with actions like `update`

@@ -1,8 +1,8 @@
 import type { BattleState, Enemy, FloatingText } from './engine';
 
-const CANVAS_W = 600;
-const CANVAS_H = 280;
-const GROUND_Y = 230;
+const CANVAS_W = 1500;
+const CANVAS_H = 150;
+const GROUND_Y = CANVAS_H - 50;
 const SKY_COLOR = '#87CEEB';
 const GROUND_COLOR = '#5b8c3e';
 const GROUND_DARK = '#4a7a32';
@@ -63,24 +63,24 @@ function drawHills(ctx: CanvasRenderingContext2D, distance: number) {
   // Far hills (slow parallax)
   ctx.fillStyle = '#6aad5a';
   ctx.beginPath();
-  ctx.moveTo(0, 230);
-  for (let x = 0; x <= 600; x += 2) {
-    const y = 195 + Math.sin((x + distance * 0.05) * 0.015) * 20 + Math.sin((x + distance * 0.05) * 0.008) * 10;
+  ctx.moveTo(0, GROUND_Y);
+  for (let x = 0; x <= CANVAS_W; x += 2) {
+    const y = GROUND_Y - 35 + Math.sin((x + distance * 0.05) * 0.015) * 20 + Math.sin((x + distance * 0.05) * 0.008) * 10;
     ctx.lineTo(x, y);
   }
-  ctx.lineTo(600, 230);
+  ctx.lineTo(CANVAS_W, GROUND_Y);
   ctx.closePath();
   ctx.fill();
 
   // Near hills (faster parallax)
   ctx.fillStyle = '#5a9d4a';
   ctx.beginPath();
-  ctx.moveTo(0, 230);
-  for (let x = 0; x <= 600; x += 2) {
-    const y = 210 + Math.sin((x + distance * 0.15) * 0.02) * 12 + Math.sin((x + distance * 0.15) * 0.035) * 6;
+  ctx.moveTo(0, GROUND_Y);
+  for (let x = 0; x <= CANVAS_W; x += 2) {
+    const y = GROUND_Y - 20 + Math.sin((x + distance * 0.15) * 0.02) * 12 + Math.sin((x + distance * 0.15) * 0.035) * 6;
     ctx.lineTo(x, y);
   }
-  ctx.lineTo(600, 230);
+  ctx.lineTo(CANVAS_W, GROUND_Y);
   ctx.closePath();
   ctx.fill();
 }

@@ -30,7 +30,7 @@ export default function App() {
   const [settingsEvent, setSettingsEvent] = useState<DoAgainEvent | null>(null);
   const [now, setNow] = useState(Date.now());
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [sortMode, setSortMode] = useState<'default' | 'due'>('default');
+  const [sortMode, setSortMode] = useState<'recent' | 'due'>('due');
   const battleLaneRef = useRef<BattleLaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
@@ -200,9 +200,6 @@ export default function App() {
   return (
     <>
       <Header
-        onAddClick={() => setShowNewModal(true)}
-        sortMode={sortMode}
-        onSortToggle={() => setSortMode(m => m === 'default' ? 'due' : 'default')}
         user={user}
         onLogin={handleLogin}
         onRegister={handleRegister}
@@ -211,6 +208,18 @@ export default function App() {
       {gameState && (
         <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
       )}
+      <div className="event-toolbar">
+        <button
+          className={`btn ${sortMode === 'due' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setSortMode(m => m === 'recent' ? 'due' : 'recent')}
+          title={sortMode === 'due' ? 'Sort by most recent' : 'Sort by due time'}
+        >
+          Sorted By {sortMode === 'due' ? 'Time Till Due' : 'Time Since Last'}
+        </button>
+        <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
+          + Add Event
+        </button>
+      </div>
       <div className="page-layout">
         <PendingPanel
           events={pendingEvents}

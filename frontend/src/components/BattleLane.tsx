@@ -139,8 +139,8 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
     <div className="battle-lane-wrapper">
       <canvas
         ref={canvasRef}
-        width={600}
-        height={280}
+        width={1500}
+        height={150}
         className="battle-canvas"
       />
       <div className="battle-stats">
