@@ -1,8 +1,6 @@
 import type { BattleState, Enemy, FloatingText } from './engine';
+import { CANVAS_W, CANVAS_H, GROUND_Y } from './engine';
 
-const CANVAS_W = 1500;
-const CANVAS_H = 150;
-const GROUND_Y = CANVAS_H - 50;
 const SKY_COLOR = '#87CEEB';
 const GROUND_COLOR = '#5b8c3e';
 const GROUND_DARK = '#4a7a32';

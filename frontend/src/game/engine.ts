@@ -62,7 +62,9 @@ export interface BattleState {
 
 // ── Constants ──
 
-const GROUND_Y = 200;
+export const CANVAS_W = 1500;
+export const CANVAS_H = 150;
+export const GROUND_Y = CANVAS_H - 50;
 const HERO_X = 80;
 const RESPAWN_TIME = 2.0;
 const ENEMY_BASE_HP = 30;
@@ -131,7 +133,7 @@ export function spawnEnemyFromEvent(
   const baseHp = ENEMY_BASE_HP + level * 8;
   const enemy: Enemy = {
     id: state.enemyIdCounter,
-    x: 600 + Math.random() * 100,
+    x: CANVAS_W + Math.random() * 100,
     y: GROUND_Y,
     hp: baseHp,
     maxHp: baseHp,
@@ -154,7 +156,7 @@ export function spawnEnemyFromEvent(
   const totalMod = (mod.attack ?? 0) + (mod.defense ?? 0) + (mod.speed ?? 0);
   const color = totalMod > 0 ? '#ef4444' : totalMod < 0 ? '#facc15' : '#f97316';
   const label = totalMod > 0 ? 'Strengthened' : totalMod < 0 ? 'Weakened' : '';
-  addFloatingText(state, 500, 140, `Enemy Lv${level}${label ? ' ' + label : ''}!`, color);
+  addFloatingText(state, CANVAS_W - 100, GROUND_Y - 60, `Enemy Lv${level}${label ? ' ' + label : ''}!`, color);
 }
 
 /**
