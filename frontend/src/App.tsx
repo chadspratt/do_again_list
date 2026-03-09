@@ -75,15 +75,15 @@ export default function App() {
   // Update game state from API response (returned by create/update/settings)
   const applyGameResponse = useCallback((data: {
     game?: GameState;
-    game_messages?: string[];
+    messages?: string[];
     spawn_enemy?: { level: number; stat_modifier?: { attack?: number; defense?: number; speed?: number } } | null;
-    hero_buffs?: { stat: 'attack' | 'defense' | 'speed'; amount: number; label: string }[];
+    hero_buffs?: { stat: 'ATTACK' | 'DEFENSE' | 'SPEED'; amount: number; label: string }[];
     pending_heal?: boolean;
     pending_fatigue?: boolean;
   }) => {
     if (data.game) setGameState(data.game);
-    if (data.game_messages && data.game_messages.length > 0) {
-      console.log('🎮 Game:', data.game_messages.join(' | '));
+    if (data.messages && data.messages.length > 0) {
+      console.log('🎮 Game:', data.messages.join(' | '));
     }
     const lane = battleLaneRef.current;
     if (lane) {
@@ -123,9 +123,9 @@ export default function App() {
   );
 
   const handleUpdate = useCallback(
-    async (eventId: number, action: string, datetime: string, endDatetime?: string, nextTime?: string) => {
+    async (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => {
       const killStreak = battleLaneRef.current?.getKillStreak() ?? 0;
-      const result = await updateEvent(eventId, action, datetime, endDatetime, killStreak, nextTime);
+      const result = await updateEvent(eventId, action, startDatetime, endDatetime, nextTime, killStreak);
       if (result.success) {
         await loadEvents();
         applyGameResponse(result);

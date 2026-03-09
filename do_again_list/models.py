@@ -1,54 +1,87 @@
+from typing import TYPE_CHECKING
+import datetime
+from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
+
+if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
 
 
-class PastEvents(models.Model):
-    class Meta:
-        db_table = 'past_events'
-        ordering = ['-end_time']
+class Activity(models.Model):
+    class MoralQuality(models.TextChoices):
+        GOOD = "good"
+        BAD = "bad"
+        NEUTRAL = "neutral"
 
-    id = models.AutoField(primary_key=True)
+    class State(models.TextChoices):
+        PENDING = "pending"
+        ACTIVE = "active"
+        INACTIVE = "inactive"
+
+    owner = models.ForeignKey(get_user_model(), on_delete=models.PROTECT)
     title = models.CharField(max_length=255)
-    start_time = models.DateTimeField(null=True, blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    next_time = models.DateTimeField(null=True, blank=True)
     ordering = models.IntegerField(default=0)
-    default_duration = models.IntegerField(default=0)
-    min_duration = models.CharField(max_length=50, blank=True, default='')
-    max_duration = models.CharField(max_length=50, blank=True, default='')
-    min_time_between_events = models.CharField(max_length=50, blank=True, default='')
-    max_time_between_events = models.CharField(max_length=50, blank=True, default='')
+    default_duration = models.DurationField(default=datetime.timedelta(0))
+    next_time = models.DateTimeField(null=True, blank=True)
+    min_duration = models.DurationField(blank=True, null=True)
+    max_duration = models.DurationField(blank=True, null=True)
+    max_time_between_events = models.DurationField(blank=True, null=True)
+    min_time_between_events = models.DurationField(blank=True, null=True)
     value = models.FloatField(default=1.0)
     repeats = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.title} on {self.end_time}"
-    
-class HistoricalEvent(models.Model):
-    class Meta:
-        db_table = 'historical_event'
-        ordering = ['-end_time']
+        return f"{self.title} ({self.state})"
 
-    id = models.AutoField(primary_key=True)
-    past_event = models.ForeignKey(PastEvents, on_delete=models.CASCADE, related_name='history')
-    start_time = models.DateTimeField()
+    if TYPE_CHECKING:
+        occurances: RelatedManager["Occurance"]
+
+    @property
+    def state(self) -> State:
+        if self.occurances.all().count() == 0:
+            return self.__class__.State.PENDING
+        if self.occurances.filter(end_time__isnull=True).exists():
+            # at least one occurance has started and not ended
+            return self.__class__.State.ACTIVE
+        return self.__class__.State.INACTIVE
+
+    @property
+    def moral_quality(self) -> MoralQuality:
+        has_max = self.max_time_between_events is not None
+        has_min = self.min_time_between_events is not None
+
+        if has_max and not has_min:
+            return self.__class__.MoralQuality.GOOD
+        elif has_min and not has_max:
+            return self.__class__.MoralQuality.BAD
+        return self.__class__.MoralQuality.NEUTRAL
+
+
+class Occurance(models.Model):
+    class Meta:
+        ordering = ["-end_time"]
+
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="occurances"
+    )
+    planned_time = models.DateTimeField(null=True, blank=True)
+    start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.past_event.title} on {self.end_time}"
+        return f"{self.activity.title} on {self.end_time}"
 
 
 class GameState(models.Model):
-    class Meta:
-        db_table = 'game_state'
+    owner = models.OneToOneField(get_user_model(), on_delete=models.PROTECT)
 
-    id = models.AutoField(primary_key=True)
     xp = models.IntegerField(default=0)
     gold = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
     base_attack = models.IntegerField(default=1)
     base_defense = models.IntegerField(default=0)
     base_speed = models.IntegerField(default=1)
-    best_distance = models.IntegerField(default=0)
     streak = models.IntegerField(default=0)
     items = models.JSONField(default=list)
     hero_hp = models.IntegerField(default=-1)  # -1 = not persisted yet, use full HP
@@ -72,7 +105,7 @@ class GameState(models.Model):
         while self.xp >= self.xp_to_next_level():
             self.xp -= self.xp_to_next_level()
             self.level += 1
-            messages.append(f'Level up! Now level {self.level}')
+            messages.append(f"Level up! Now level {self.level}")
         return messages
 
     def __str__(self):

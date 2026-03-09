@@ -1,22 +1,19 @@
 from django.contrib import admin
 
-from .models import HistoricalEvent, PastEvents
+from .models import Activity, Occurance
 
 
-@admin.register(PastEvents)
-class PastEventsAdmin(admin.ModelAdmin):
-    list_display = ('title', 'start_time', 'ordering')
-    list_editable = ('ordering',)
-    ordering = ('-start_time',)
-    search_fields = ('title',)
-    date_hierarchy = 'start_time'
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ("title", "ordering")
+    list_editable = ("ordering",)
+    search_fields = ("title",)
 
 
-@admin.register(HistoricalEvent)
-class HistoricalEventAdmin(admin.ModelAdmin):
-    list_display = ('past_event', 'start_time')
-    list_filter = ('past_event',)
-    ordering = ('-start_time',)
-    date_hierarchy = 'start_time'
-    readonly_fields = ('start_time',)
-
+@admin.register(Occurance)
+class OccuranceAdmin(admin.ModelAdmin):
+    list_display = ("activity", "start_time")
+    list_filter = ("activity",)
+    ordering = ("-start_time",)
+    date_hierarchy = "start_time"
+    readonly_fields = ("start_time",)

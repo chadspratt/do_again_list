@@ -1,87 +1,96 @@
 import type { DoAgainEvent, EventSettings, GameState } from './types';
 
-const API_BASE = '/do_again/api';
+const API_BASE = '/api/do-again';
 
 function getCsrfToken(): string {
   const match = document.cookie.match(/csrftoken=([^;]+)/);
   return match ? match[1] : '';
 }
 
-interface ApiResponse {
+export interface ApiResponse {
   success: boolean;
   error?: string;
-  game?: import('./types').GameState;
-  game_messages?: string[];
+  game?: GameState;
+  messages?: string[];
   spawn_enemy?: { level: number; stat_modifier?: { attack?: number; defense?: number; speed?: number } } | null;
-  hero_buffs?: { stat: 'attack' | 'defense' | 'speed'; amount: number; label: string }[];
+  hero_buffs?: { stat: 'ATTACK' | 'DEFENSE' | 'SPEED'; amount: number; label: string }[];
   pending_heal?: boolean;
   pending_fatigue?: boolean;
+  resource_ref?: { klass: string; pk: number };
 }
 
-async function apiPost(url: string, body: object): Promise<ApiResponse> {
-  const res = await fetch(url, {
-    method: 'POST',
+async function apiRequest(url: string, method: string, body?: object): Promise<Response> {
+  return fetch(url, {
+    method,
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': getCsrfToken(),
     },
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  return res.json();
 }
 
 export async function fetchEvents(): Promise<DoAgainEvent[]> {
-  const res = await fetch(`${API_BASE}/events/`);
+  const res = await fetch(`${API_BASE}/activities/`);
   return res.json();
 }
 
-export async function createEvent(title: string, date: string, pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
-  const body: Record<string, unknown> = { title, repeats };
-  if (pending) {
-    body.pending = true;
-  } else {
-    body.date = date;
-  }
-  return apiPost(`${API_BASE}/events/create/`, body);
+export async function createEvent(title: string, _date: string, _pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
+  const res = await apiRequest(`${API_BASE}/activities/`, 'POST', { title, repeats });
+  if (res.ok) return res.json();
+  const data = await res.json();
+  return { success: false, error: data.detail || JSON.stringify(data) };
 }
 
 export async function updateEvent(
-  eventId: number,
+  event_id: number,
   action: string,
-  datetime: string,
-  endDatetime?: string,
-  killStreak?: number,
-  nextTime?: string,
+  start_time?: string,
+  end_time?: string,
+  next_time?: string,
+  kill_streak?: number,
 ): Promise<ApiResponse> {
-  const body: Record<string, string | number> = { action, datetime };
-  if (endDatetime) body.end_datetime = endDatetime;
-  if (killStreak !== undefined) body.kill_streak = killStreak;
-  if (nextTime) body.next_time = nextTime;
-  return apiPost(`${API_BASE}/events/${eventId}/update/`, body);
+  const body = { start_time, end_time, next_time, kill_streak: kill_streak ?? 0 };
+  const res = await apiRequest(`${API_BASE}/activities/${event_id}/${action}/`, 'POST', body);
+  if (res.ok) return res.json();
+  const data = await res.json();
+  return { success: false, error: data.error || data.detail || JSON.stringify(data) };
 }
 
 export async function deleteEvent(eventId: number): Promise<ApiResponse> {
-  return apiPost(`${API_BASE}/events/${eventId}/delete/`, {});
+  const res = await apiRequest(`${API_BASE}/activities/${eventId}/`, 'DELETE');
+  if (res.ok) return { success: true };
+  const data = await res.json();
+  return { success: false, error: data.detail || 'Delete failed' };
 }
 
 export async function updateEventSettings(
   eventId: number,
   settings: EventSettings,
 ): Promise<ApiResponse> {
-  return apiPost(`${API_BASE}/events/${eventId}/settings/`, settings);
+  const res = await apiRequest(`${API_BASE}/activities/${eventId}/`, 'PATCH', settings);
+  if (res.ok) return { success: true };
+  const data = await res.json();
+  return { success: false, error: data.detail || JSON.stringify(data) };
 }
 
 export async function fetchGameState(): Promise<GameState> {
   const res = await fetch(`${API_BASE}/game/`);
-  return res.json();
+  const data = await res.json();
+  // DRF list endpoint returns an array; take the first (singleton per user)
+  return Array.isArray(data) ? data[0] : data;
 }
 
 export async function syncBattleState(gold: number, xp: number, streak: number, heroHp: number): Promise<GameState> {
-  const res = await apiPost(`${API_BASE}/game/sync/`, { gold, xp, streak, hero_hp: heroHp });
-  return res.game!;
+  const res = await apiRequest(`${API_BASE}/game/sync/`, 'POST', {
+    gold, xp, streak, hero_hp: heroHp,
+  });
+  return res.json();
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────
+// ─── Auth (still uses legacy Django views) ──────────────────────────
+
+const AUTH_BASE = '/do_again/api';
 
 export interface AuthUser {
   username: string;
@@ -94,19 +103,22 @@ interface AuthResponse {
 }
 
 export async function fetchAuthUser(): Promise<AuthUser | null> {
-  const res = await fetch(`${API_BASE}/auth/user/`);
+  const res = await fetch(`${AUTH_BASE}/auth/user/`);
   const data: AuthResponse = await res.json();
   return data.user ?? null;
 }
 
 export async function authRegister(username: string, password: string): Promise<AuthResponse> {
-  return apiPost(`${API_BASE}/auth/register/`, { username, password }) as Promise<AuthResponse>;
+  const res = await apiRequest(`${AUTH_BASE}/auth/register/`, 'POST', { username, password });
+  return res.json() as Promise<AuthResponse>;
 }
 
 export async function authLogin(username: string, password: string): Promise<AuthResponse> {
-  return apiPost(`${API_BASE}/auth/login/`, { username, password }) as Promise<AuthResponse>;
+  const res = await apiRequest(`${AUTH_BASE}/auth/login/`, 'POST', { username, password });
+  return res.json() as Promise<AuthResponse>;
 }
 
 export async function authLogout(): Promise<AuthResponse> {
-  return apiPost(`${API_BASE}/auth/logout/`, {}) as Promise<AuthResponse>;
+  const res = await apiRequest(`${AUTH_BASE}/auth/logout/`, 'POST', {});
+  return res.json() as Promise<AuthResponse>;
 }

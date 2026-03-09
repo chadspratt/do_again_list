@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    "rest_framework",
+    "django_filters",
+    "drf_spectacular",
     "do_again_list",
     "test_project",
 ]
@@ -131,3 +134,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://app:8000",
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+}
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Do Again List API",
+    "DESCRIPTION": "",
+    "VERSION": "0.0.1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # OTHER SETTINGS
+}

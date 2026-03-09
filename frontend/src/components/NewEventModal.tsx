@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { parseTimeOffset } from '../utils';
+import { subtractTimeOffset } from '../utils';
 
 interface NewEventModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export function NewEventModal({ isOpen, onClose, onCreate }: NewEventModalProps)
     if (pending) {
       onCreate(title.trim(), '', true, repeats);
     } else {
-      const date = parseTimeOffset(timeAgo);
+      const date = subtractTimeOffset(timeAgo);
       onCreate(title.trim(), date.toISOString(), false, repeats);
     }
     setTitle('');

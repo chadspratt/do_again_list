@@ -42,7 +42,7 @@ export interface FloatingText {
 }
 
 export interface HeroBuff {
-  stat: 'attack' | 'defense' | 'speed';
+  stat: 'ATTACK' | 'DEFENSE' | 'SPEED';
   amount: number;
   remaining: number;  // seconds remaining
   label: string;
@@ -160,9 +160,9 @@ export function spawnEnemyFromEvent(
 /**
  * Apply a temporary hero buff or debuff that is lost on death. Positive = buff, negative = debuff.
  */
-export function applyBuff(state: BattleState, stat: 'attack' | 'defense' | 'speed', amount: number, label: string): void {
+export function applyBuff(state: BattleState, stat: 'ATTACK' | 'DEFENSE' | 'SPEED', amount: number, label: string): void {
   state.buffs.push({ stat, amount, remaining: BUFF_DURATION, label });
-  const emoji = stat === 'attack' ? '🗡️' : stat === 'defense' ? '🛡️' : '⚡';
+  const emoji = stat === 'ATTACK' ? '🗡️' : stat === 'DEFENSE' ? '🛡️' : '⚡';
   const sign = amount > 0 ? '+' : '';
   const color = amount > 0 ? '#a855f7' : '#ef4444';
   addFloatingText(state, state.hero.x, state.hero.y - 40, `${emoji}${sign}${amount} ${label}`, color);
@@ -175,7 +175,7 @@ function addFloatingText(state: BattleState, x: number, y: number, text: string,
 /**
  * Compute total buff bonus for a stat.
  */
-function buffBonus(buffs: HeroBuff[], stat: 'attack' | 'defense' | 'speed'): number {
+function buffBonus(buffs: HeroBuff[], stat: 'ATTACK' | 'DEFENSE' | 'SPEED'): number {
   return buffs.filter(b => b.stat === stat).reduce((sum, b) => sum + b.amount, 0);
 }
 
@@ -208,9 +208,9 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
   });
 
   // Apply buff bonuses to hero stats each frame
-  hero.attack = gs.total_attack + buffBonus(state.buffs, 'attack');
-  hero.defense = gs.total_defense + buffBonus(state.buffs, 'defense');
-  const speedBuff = buffBonus(state.buffs, 'speed');
+  hero.attack = gs.total_attack + buffBonus(state.buffs, 'ATTACK');
+  hero.defense = gs.total_defense + buffBonus(state.buffs, 'DEFENSE');
+  const speedBuff = buffBonus(state.buffs, 'SPEED');
   hero.speed = 30 + (gs.total_speed + speedBuff) * 5;
   hero.attackCooldown = Math.max(0.4, 1.2 - (gs.total_speed + speedBuff) * 0.05);
 
