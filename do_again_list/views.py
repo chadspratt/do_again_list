@@ -12,6 +12,7 @@ from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -47,6 +48,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.all()
     serializer_class = serializers.ActivitySerializer
     filterset_class = ActivityFilter
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> BaseManager[Activity]: # type: ignore
         user = self.request.user
@@ -223,6 +225,7 @@ class OccuranceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Occurance.objects.all()
     serializer_class = serializers.OccuranceSerializer
     filterset_class = OccuranceFilter
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> BaseManager[Occurance]: # type: ignore
         user = self.request.user
@@ -232,6 +235,7 @@ class OccuranceViewSet(viewsets.ReadOnlyModelViewSet):
 class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = GameState.objects.all()
     serializer_class = serializers.GameStateSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> BaseManager[GameState]: # type: ignore
         user = self.request.user

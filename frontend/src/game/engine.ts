@@ -187,12 +187,13 @@ export interface TickResult {
   goldEarned: number;
   xpEarned: number;
   heroDied: boolean;
+  heroRespawned: boolean;
   distance: number;
   killStreak: number;
 }
 
 export function tick(state: BattleState, gs: GameState, dt: number): TickResult {
-  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, distance: state.distance, killStreak: state.hero.killStreak };
+  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, heroRespawned: false, distance: state.distance, killStreak: state.hero.killStreak };
   const hero = state.hero;
 
   // Update floating texts
@@ -243,6 +244,7 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       Object.assign(hero, newHero);
       state.distance = 0;
       state.enemies = [];
+      result.heroRespawned = true;
     }
     state.enemies = state.enemies.filter(e => !e.dead || e.deathTimer > 0);
     state.enemies.forEach(e => { if (e.dead) e.deathTimer -= dt; });

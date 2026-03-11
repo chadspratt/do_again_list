@@ -43,9 +43,15 @@ export default function App() {
   const loadEvents = useCallback(async () => {
     try {
       const data = await fetchEvents();
-      setEvents(data);
+      if (Array.isArray(data)) {
+        setEvents(data);
+      } else {
+        // Unauthenticated or unexpected response – treat as empty
+        setEvents([]);
+      }
     } catch (err) {
       console.error('Failed to load events:', err);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -54,7 +60,11 @@ export default function App() {
   const loadGameState = useCallback(async () => {
     try {
       const data = await fetchGameState();
-      setGameState(data);
+      if (data && !('detail' in data)) {
+        setGameState(data);
+      } else {
+        setGameState(null);
+      }
     } catch (err) {
       console.error('Failed to load game state:', err);
     }
@@ -174,24 +184,30 @@ export default function App() {
     const res = await authLogin(username, password);
     if (res.success && res.user) {
       setUser(res.user);
+      loadEvents();
+      loadGameState();
       return null;
     }
     return res.error || 'Login failed.';
-  }, []);
+  }, [loadEvents, loadGameState]);
 
   const handleRegister = useCallback(async (username: string, password: string): Promise<string | null> => {
     const res = await authRegister(username, password);
     if (res.success && res.user) {
       setUser(res.user);
+      loadEvents();
+      loadGameState();
       return null;
     }
     return res.error || 'Registration failed.';
-  }, []);
+  }, [loadEvents, loadGameState]);
 
   const handleLogout = useCallback(async () => {
     await authLogout();
     setUser(null);
-  }, []);
+    loadEvents();
+    loadGameState();
+  }, [loadEvents, loadGameState]);
 
   if (loading) {
     return <div className="loading">Loading...</div>;

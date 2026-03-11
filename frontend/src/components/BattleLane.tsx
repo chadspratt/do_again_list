@@ -31,9 +31,10 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
   // Initialize battle state
   useEffect(() => {
     battleRef.current = createBattleState(gameState);
-    // Restore persisted HP from server (hero_hp >= 0 means a saved value exists)
+    // Restore persisted HP from server (hero_hp > 0 means a saved value exists;
+    // hero_hp <= 0 means the hero was dead or not yet persisted, so use full HP)
     const savedHp = gameState.hero_hp;
-    if (savedHp >= 0 && battleRef.current) {
+    if (savedHp > 0 && battleRef.current) {
       battleRef.current.hero.hp = Math.min(savedHp, battleRef.current.hero.maxHp);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,6 +122,13 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
         .then(gs => onGameStateUpdate(gs))
         .catch((error) => {
           console.error('Failed to sync battle state on hero death:', error);
+        });
+    }
+    if (result.heroRespawned) {
+      syncBattleState(0, 0, battle.hero.killStreak, battle.hero.hp)
+        .then(gs => onGameStateUpdate(gs))
+        .catch((error) => {
+          console.error('Failed to sync battle state on hero respawn:', error);
         });
     }
 
