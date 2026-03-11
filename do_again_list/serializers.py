@@ -53,14 +53,22 @@ class ActivitySerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "start_time", "end_time", "state")
 
+    def _latest_occurance(self, obj: models.Activity) -> models.Occurance | None:
+        """Return the active (end_time IS NULL) occurrence if one exists,
+        otherwise the most-recently-ended occurrence."""
+        active = obj.occurances.filter(end_time__isnull=True).first()
+        if active is not None:
+            return active
+        return obj.occurances.first()  # ordered by -end_time via Meta
+
     def get_start_time(self, obj: models.Activity) -> str | None:
-        latest = obj.occurances.first()  # ordered by -end_time via Meta
+        latest = self._latest_occurance(obj)
         if latest and latest.start_time:
             return latest.start_time.isoformat()
         return None
 
     def get_end_time(self, obj: models.Activity) -> str | None:
-        latest = obj.occurances.first()
+        latest = self._latest_occurance(obj)
         if latest and latest.end_time:
             return latest.end_time.isoformat()
         return None

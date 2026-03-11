@@ -104,7 +104,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
             onChange={(e) => setMinTime(e.target.value)}
           />
           <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
-            After ending, hides controls until this much time has passed. Countdown shown.
+            After ending, shows count down to this until reached.
           </small>
         </div>
 
