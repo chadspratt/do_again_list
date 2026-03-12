@@ -25,6 +25,8 @@ class Activity(models.Model):
         help_text="If True, this activity is a built-in that is automatically managed by the app.",
     )
     title = models.CharField(max_length=255)
+    display_name = models.CharField(max_length=255, blank=True)
+    code_name = models.CharField(max_length=255, null=True, blank=True)
     ordering = models.IntegerField(default=0)
     default_duration = models.DurationField(default=datetime.timedelta(0))
     next_time = models.DateTimeField(null=True, blank=True)
@@ -34,6 +36,11 @@ class Activity(models.Model):
     min_time_between_events = models.DurationField(blank=True, null=True)
     value = models.FloatField(default=1.0)
     repeats = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if not self.display_name:
+            self.display_name = self.title
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({self.state})"

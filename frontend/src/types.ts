@@ -1,6 +1,8 @@
 export interface DoAgainEvent {
   id: number;
   title: string;
+  display_name: string;
+  code_name: string | null;
   ordering: number;
   start_time: string | null;
   end_time: string | null;

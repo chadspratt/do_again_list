@@ -54,7 +54,7 @@ function OneTimeCard({
     >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
       <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
-      <div className="event-title">{event.title}</div>
+      <div className="event-title">{event.display_name}</div>
       {timerText && <div className="onetime-timer">{timerText}</div>}
       {isHovered && (
         <div className="card-hover-actions">

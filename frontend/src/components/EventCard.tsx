@@ -93,7 +93,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Event settings">
         ⚙️
       </span>
-      <div className="event-title">{event.title}</div>
+      <div className="event-title">{event.display_name}</div>
       <div className="event-date" style={{ whiteSpace: 'pre-line' }}>
         {dateDisplay}
       </div>

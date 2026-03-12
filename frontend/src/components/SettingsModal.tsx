@@ -52,7 +52,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
       <div className="modal">
         <h2>
           Event Settings —{' '}
-          <span style={{ fontWeight: 'normal', color: '#555' }}>{event.title}</span>
+          <span style={{ fontWeight: 'normal', color: '#555' }}>{event.display_name}</span>
         </h2>
 
         <div className="form-group">

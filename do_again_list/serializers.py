@@ -38,6 +38,8 @@ class ActivitySerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "title",
+            "display_name",
+            "code_name",
             "ordering",
             "default_duration",
             "next_time",
