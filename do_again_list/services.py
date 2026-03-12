@@ -3,9 +3,12 @@ from __future__ import annotations
 import datetime
 import enum
 from dataclasses import asdict, dataclass, field, fields
-from typing import Literal
+from django.utils import timezone
 
 from do_again_list import models, serializers
+
+# Title of the built-in activity that is triggered when a new Activity is added.
+ADD_TO_LIST_TITLE = "Add to list"
 
 
 class Addable:
@@ -96,10 +99,20 @@ class ActivityLifecycleException(Exception):
 class ActivityService:
     def create(self, serializer: serializers.ActivitySerializer, owner) -> GameEffect:
         instance = serializer.save(owner=owner)
-        return GameEffect(
-            game_state_delta=GameStateDelta(base_attack=1),
-            resource_ref=ResourceRef(klass="Activity", pk=instance.pk),
-        )
+
+        # Auto-complete the "Add to List" built-in activity
+        add_to_list = models.Activity.objects.filter(
+            owner=owner, is_built_in=True, title=ADD_TO_LIST_TITLE
+        ).first()
+        if add_to_list is not None:
+            now = timezone.now()
+            effect = self.end(activity=add_to_list, end_time=now)
+        else:
+            effect = GameEffect()
+
+        effect.game_state_delta += GameStateDelta(base_attack=1)
+        effect.resource_ref = ResourceRef(klass="Activity", pk=instance.pk)
+        return effect
 
     def _get_latest_completed_occurrance(
         self, activity: models.Activity

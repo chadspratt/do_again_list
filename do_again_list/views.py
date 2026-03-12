@@ -241,6 +241,13 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         user = self.request.user
         return GameState.objects.filter(owner=user)
 
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        game_state, created = GameState.objects.get_or_create(owner=request.user)
+        data = serializers.GameStateSerializer(game_state).data
+        # Signal the frontend to spawn a welcome enemy on first login
+        data["spawn_first_enemy"] = created
+        return Response([data])
+
     @action(detail=False, methods=["post"])
     def sync(self, request: Request) -> Response:
         """Sync battle results (gold earned, xp earned, current streak, hero HP)."""

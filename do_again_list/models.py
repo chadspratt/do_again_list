@@ -20,6 +20,10 @@ class Activity(models.Model):
         INACTIVE = "inactive"
 
     owner = models.ForeignKey(get_user_model(), on_delete=models.PROTECT)
+    is_built_in = models.BooleanField(
+        default=False,
+        help_text="If True, this activity is a built-in that is automatically managed by the app.",
+    )
     title = models.CharField(max_length=255)
     ordering = models.IntegerField(default=0)
     default_duration = models.DurationField(default=datetime.timedelta(0))

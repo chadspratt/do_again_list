@@ -47,11 +47,12 @@ class ActivitySerializer(serializers.ModelSerializer):
             "min_time_between_events",
             "value",
             "repeats",
+            "is_built_in",
             "start_time",
             "end_time",
             "state",
         )
-        read_only_fields = ("id", "start_time", "end_time", "state")
+        read_only_fields = ("id", "is_built_in", "start_time", "end_time", "state")
 
     def _latest_occurance(self, obj: models.Activity) -> models.Occurance | None:
         """Return the active (end_time IS NULL) occurrence if one exists,

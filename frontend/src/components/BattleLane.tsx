@@ -37,6 +37,10 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
     if (savedHp > 0 && battleRef.current) {
       battleRef.current.hero.hp = Math.min(savedHp, battleRef.current.hero.maxHp);
     }
+    // Spawn a welcome enemy on first login
+    if (gameState.spawn_first_enemy && battleRef.current) {
+      spawnEnemyFromEvent(battleRef.current, 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -12,6 +12,7 @@ export interface DoAgainEvent {
   max_time_between_events: string;
   value: number;
   repeats: boolean;
+  is_built_in: boolean;
   state: 'pending' | 'active' | 'inactive';
 }
 
@@ -40,4 +41,5 @@ export interface GameState {
   streak: number;
   items: string[];
   hero_hp: number;
+  spawn_first_enemy?: boolean;
 }

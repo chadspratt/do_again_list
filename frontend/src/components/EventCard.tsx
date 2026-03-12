@@ -101,31 +101,35 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
 
     {isHovered && (
       <>
-        { event.end_time &&
-            <div className="event-actions">
+        {!event.is_built_in && (
+          <>
+            { event.end_time &&
+                <div className="event-actions">
+                    <input
+                    type="text"
+                    placeholder="start e.g. 1h30m"
+                    value={startInput}
+                    onChange={(e) => setStartInput(e.target.value)}
+                    />
+                    <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
+                    Start
+                    </button>
+                </div>
+            }
+
+            <div className="event-actions" style={{ marginTop: '6px' }}>
                 <input
                 type="text"
-                placeholder="start e.g. 1h30m"
-                value={startInput}
-                onChange={(e) => setStartInput(e.target.value)}
+                placeholder="end e.g. 1h30m"
+                value={endInput}
+                onChange={(e) => setEndInput(e.target.value)}
                 />
-                <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
-                Start
+                <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
+                End
                 </button>
             </div>
-        }
-
-        <div className="event-actions" style={{ marginTop: '6px' }}>
-            <input
-            type="text"
-            placeholder="end e.g. 1h30m"
-            value={endInput}
-            onChange={(e) => setEndInput(e.target.value)}
-            />
-            <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
-            End
-            </button>
-        </div>
+          </>
+        )}
 
         { event.end_time &&
             <div className="event-actions" style={{ marginTop: '6px' }}>
