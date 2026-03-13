@@ -7,6 +7,7 @@ interface PendingPanelProps {
   onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  useCodeNames?: boolean;
 }
 
 function PendingCard({
@@ -14,11 +15,13 @@ function PendingCard({
   onUpdate,
   onDelete,
   onOpenSettings,
+  useCodeNames,
 }: {
   event: DoAgainEvent;
   onUpdate: PendingPanelProps['onUpdate'];
   onDelete: PendingPanelProps['onDelete'];
   onOpenSettings: PendingPanelProps['onOpenSettings'];
+  useCodeNames?: boolean;
 }) {
   const {
     startInput, setStartInput,
@@ -36,7 +39,7 @@ function PendingCard({
     >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
       <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
-      <div className="event-title">{event.display_name}</div>
+      <div className="event-title">{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
       {isHovered && (
         <div className="card-hover-actions">
           <div className="pending-actions">
@@ -74,7 +77,7 @@ function PendingCard({
   );
 }
 
-export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings }: PendingPanelProps) {
+export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings, useCodeNames }: PendingPanelProps) {
   if (events.length === 0) {
     return (
       <div className="pending-panel">
@@ -94,6 +97,7 @@ export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings }: Pen
           onUpdate={onUpdate}
           onDelete={onDelete}
           onOpenSettings={onOpenSettings}
+          useCodeNames={useCodeNames}
         />
       ))}
     </div>

@@ -31,6 +31,7 @@ export default function App() {
   const [now, setNow] = useState(Date.now());
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [sortMode, setSortMode] = useState<'recent' | 'due'>('due');
+  const [useCodeNames, setUseCodeNames] = useState(false);
   const battleLaneRef = useRef<BattleLaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
@@ -235,6 +236,14 @@ export default function App() {
         >
           Sorted By {sortMode === 'due' ? 'Time Till Due' : 'Time Since Last'}
         </button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setUseCodeNames(v => !v)}
+          title={useCodeNames ? 'Use normal names' : 'Use code names'}
+          style={{ fontSize: '1.2rem', lineHeight: 1, padding: '4px 8px' }}
+        >
+          {useCodeNames ? '🧶' : '🪩'}
+        </button>
       </div>
       <div className="page-layout">
         <PendingPanel
@@ -242,6 +251,7 @@ export default function App() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onOpenSettings={(event) => setSettingsEvent(event)}
+          useCodeNames={useCodeNames}
         />
         <div className="main-panel">
           <EventGrid
@@ -250,6 +260,7 @@ export default function App() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onOpenSettings={(event) => setSettingsEvent(event)}
+            useCodeNames={useCodeNames}
           />
         </div>
         <OneTimePanel
@@ -258,6 +269,7 @@ export default function App() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onOpenSettings={(event) => setSettingsEvent(event)}
+          useCodeNames={useCodeNames}
         />
       </div>
       <NewEventModal
@@ -269,6 +281,7 @@ export default function App() {
         event={settingsEvent}
         onClose={() => setSettingsEvent(null)}
         onSave={handleSaveSettings}
+        useCodeNames={useCodeNames}
       />
     </>
   );

@@ -8,12 +8,13 @@ interface EventGridProps {
   onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  useCodeNames?: boolean;
 }
 
 /** Duration of the FLIP reorder animation in ms */
 const FLIP_DURATION = 800;
 
-export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings }: EventGridProps) {
+export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, useCodeNames }: EventGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   // Stores the bounding rect of each card (keyed by event id) from the *previous* render
   const prevRectsRef = useRef<Map<number, DOMRect>>(new Map());
@@ -93,6 +94,7 @@ export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings }: E
             onDelete={onDelete}
             onOpenSettings={onOpenSettings}
             dataEventId={event.id}
+            useCodeNames={useCodeNames}
           />
         ))}
       </div>

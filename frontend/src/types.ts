@@ -21,6 +21,7 @@ export interface DoAgainEvent {
 export interface EventSettings {
   display_name?: string;
   title?: string;
+  code_name?: string | null;
   default_duration: string;
   min_duration: string;
   max_duration: string;

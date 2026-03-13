@@ -9,6 +9,7 @@ interface OneTimePanelProps {
   onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  useCodeNames?: boolean;
 }
 
 function OneTimeCard({
@@ -17,12 +18,14 @@ function OneTimeCard({
   onUpdate,
   onDelete,
   onOpenSettings,
+  useCodeNames,
 }: {
   event: DoAgainEvent;
   now: number;
   onUpdate: OneTimePanelProps['onUpdate'];
   onDelete: OneTimePanelProps['onDelete'];
   onOpenSettings: OneTimePanelProps['onOpenSettings'];
+  useCodeNames?: boolean;
 }) {
   const {
     startInput, setStartInput,
@@ -54,7 +57,7 @@ function OneTimeCard({
     >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
       <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
-      <div className="event-title">{event.display_name}</div>
+      <div className="event-title">{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
       {timerText && <div className="onetime-timer">{timerText}</div>}
       {isHovered && (
         <div className="card-hover-actions">
@@ -91,7 +94,7 @@ function OneTimeCard({
   );
 }
 
-export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings }: OneTimePanelProps) {
+export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings, useCodeNames }: OneTimePanelProps) {
   const [showCompleted, setShowCompleted] = useState(false);
 
   const visibleEvents = showCompleted
@@ -123,6 +126,7 @@ export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings }
             onUpdate={onUpdate}
             onDelete={onDelete}
             onOpenSettings={onOpenSettings}
+            useCodeNames={useCodeNames}
           />
         ))
       )}
