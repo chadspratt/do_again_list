@@ -1,5 +1,12 @@
 import type { DoAgainEvent } from './types';
 
+
+const MS_PER_MINUTE = 60000;
+const MS_PER_HOUR = MS_PER_MINUTE * 60;
+const MS_PER_DAY = MS_PER_HOUR * 24;
+const MS_PER_WEEK = MS_PER_DAY * 7;
+const MS_PER_MONTH = MS_PER_DAY * 30;
+const MS_PER_YEAR = MS_PER_DAY * 365;
 /**
  * Parse a time offset string like "1d5h30m" to milliseconds.
  * Returns 0 if blank or invalid.
@@ -7,24 +14,120 @@ import type { DoAgainEvent } from './types';
 export function parseTimeOffsetMs(input: string): number {
   if (!input || input.trim() === '') return 0;
   let totalMs = 0;
+  const yearMatch = input.match(/(\d+)y/);
+  const monthMatch = input.match(/(\d+)mo/);
+  const weekMatch = input.match(/(\d+)w/);
   const dayMatch = input.match(/(\d+)d/);
   const hourMatch = input.match(/(\d+)h/);
   const minMatch = input.match(/(\d+)m/);
   const secMatch = input.match(/(\d+)s/);
-  if (dayMatch) totalMs += parseInt(dayMatch[1]) * 24 * 60 * 60 * 1000;
-  if (hourMatch) totalMs += parseInt(hourMatch[1]) * 60 * 60 * 1000;
-  if (minMatch) totalMs += parseInt(minMatch[1]) * 60 * 1000;
+  if (yearMatch) totalMs += parseInt(yearMatch[1]) * MS_PER_YEAR;
+  if (monthMatch) totalMs += parseInt(monthMatch[1]) * MS_PER_MONTH;
+  if (weekMatch) totalMs += parseInt(weekMatch[1]) * MS_PER_WEEK;
+  if (dayMatch) totalMs += parseInt(dayMatch[1]) * MS_PER_DAY;
+  if (hourMatch) totalMs += parseInt(hourMatch[1]) * MS_PER_HOUR;
+  if (minMatch) totalMs += parseInt(minMatch[1]) * MS_PER_MINUTE;
   if (secMatch) totalMs += parseInt(secMatch[1]) * 1000;
   return totalMs;
 }
 
 /**
+ * Regex for clock-time formats: "10:30am", "1pm", "13:30", "1:05 PM", etc.
+ */
+const CLOCK_TIME_RE = /^\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*$/i;
+
+/**
+ * Check whether an input string looks like a clock time rather than
+ * a duration offset.
+ */
+export function isClockTime(input: string): boolean {
+  return CLOCK_TIME_RE.test(input.trim());
+}
+
+/**
+ * Parse a clock-time string into { hours, minutes } in 24-hour format.
+ * Returns null if the string doesn't match.
+ */
+export function parseClockTime(input: string): { hours: number; minutes: number } | null {
+  const m = input.trim().match(CLOCK_TIME_RE);
+  if (!m) return null;
+  let hours = parseInt(m[1], 10);
+  const minutes = m[2] ? parseInt(m[2], 10) : 0;
+  const ampm = m[3]?.toLowerCase();
+
+  if (ampm === 'am') {
+    if (hours === 12) hours = 0;           // 12am = midnight
+  } else if (ampm === 'pm') {
+    if (hours !== 12) hours += 12;         // 1pm = 13, 12pm stays 12
+  }
+  // No am/pm → treat as 24-hour format already
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return { hours, minutes };
+}
+
+/**
+ * Resolve a clock-time string to the most recent past occurrence of
+ * that time (for start/end inputs).
+ */
+export function clockTimeToPast(input: string): Date | null {
+  const parsed = parseClockTime(input);
+  if (!parsed) return null;
+  const now = new Date();
+  const candidate = new Date(now);
+  candidate.setHours(parsed.hours, parsed.minutes, 0, 0);
+  // If the candidate is in the future (or more than a few seconds ahead),
+  // roll back one day.
+  if (candidate.getTime() > now.getTime()) {
+    candidate.setDate(candidate.getDate() - 1);
+  }
+  return candidate;
+}
+
+/**
+ * Resolve a clock-time string to the next future occurrence of that
+ * time (for next_time input).
+ */
+export function clockTimeToFuture(input: string): Date | null {
+  const parsed = parseClockTime(input);
+  if (!parsed) return null;
+  const now = new Date();
+  const candidate = new Date(now);
+  candidate.setHours(parsed.hours, parsed.minutes, 0, 0);
+  // If the candidate is in the past (or equal), roll forward one day.
+  if (candidate.getTime() <= now.getTime()) {
+    candidate.setDate(candidate.getDate() + 1);
+  }
+  return candidate;
+}
+
+/**
  * Parse a time offset string and return a Date that many ms before now.
+ * Also supports clock-time strings like "10:30am", "1pm", "13:30"
+ * which resolve to the most recent past occurrence of that time.
  * Returns current date if blank.
  */
 export function subtractTimeOffset(input: string): Date {
   if (!input || input.trim() === '') return new Date();
+  if (isClockTime(input)) {
+    return clockTimeToPast(input) ?? new Date();
+  }
   return new Date(Date.now() - parseTimeOffsetMs(input));
+}
+
+/**
+ * Parse a time input for next_time and return a future Date.
+ * Supports duration offsets ("1d5h") added to now, as well as
+ * clock-time strings ("10:30am", "1pm") resolved to the next
+ * future occurrence.
+ * Returns null if blank.
+ */
+export function addTimeOffset(input: string): Date | null {
+  if (!input || input.trim() === '') return null;
+  if (isClockTime(input)) {
+    return clockTimeToFuture(input) ?? null;
+  }
+  return new Date(Date.now() + parseTimeOffsetMs(input));
 }
 
 /**
@@ -33,12 +136,21 @@ export function subtractTimeOffset(input: string): Date {
 export function formatCountdown(ms: number, label: string): string {
   const abs = Math.abs(ms);
   const sign = ms < 0 ? '-' : '';
-  const days = Math.floor(abs / 86400000);
-  const hours = Math.floor((abs % 86400000) / 3600000);
-  const mins = Math.floor((abs % 3600000) / 60000);
-  const secs = Math.floor((abs % 60000) / 1000);
+  const years = Math.floor(abs / MS_PER_YEAR);
+  const months = Math.floor((abs % MS_PER_YEAR) / MS_PER_MONTH);
+  const weeks = Math.floor((abs % MS_PER_MONTH) / MS_PER_WEEK);
+  const days = Math.floor((abs % MS_PER_WEEK) / MS_PER_DAY);
+  const hours = Math.floor((abs % MS_PER_DAY) / MS_PER_HOUR);
+  const mins = Math.floor((abs % MS_PER_HOUR) / MS_PER_MINUTE);
+  const secs = Math.floor((abs % MS_PER_MINUTE) / 1000);
   let time: string;
-  if (days > 0) {
+  if (years > 0) {
+    time = `${sign}${years}y ${months}mo`;
+  } else if (months > 0) {
+    time = `${sign}${months}mo ${weeks}w`;
+  } else if (weeks > 0) {
+    time = `${sign}${weeks}w ${days}d`;
+  } else if (days > 0) {
     time = `${sign}${days}d ${hours}h`;
   } else if (hours > 0) {
     time = `${sign}${hours}h ${mins}m`;
@@ -54,14 +166,19 @@ export function formatCountdown(ms: number, label: string): string {
  * Format elapsed time as "Xd Yh ago".
  */
 export function formatElapsed(ms: number): string {
-  const days = Math.floor(ms / 86400000);
-  const hours = Math.floor((ms % 86400000) / 3600000);
-  const mins = Math.floor((ms % 3600000) / 60000);
-  const secs = Math.floor((ms % 60000) / 1000);
-  if (days > 365) {
-    const years = Math.floor(days / 365);
-    const remainingDays = days % 365;
-    return `${years}y ${remainingDays}d ago`;
+  const years = Math.floor(ms / MS_PER_YEAR);
+  const months = Math.floor((ms % MS_PER_YEAR) / MS_PER_MONTH);
+  const weeks = Math.floor((ms % MS_PER_MONTH) / MS_PER_WEEK);
+  const days = Math.floor((ms % MS_PER_WEEK) / MS_PER_DAY);
+  const hours = Math.floor((ms % MS_PER_DAY) / MS_PER_HOUR);
+  const mins = Math.floor((ms % MS_PER_HOUR) / MS_PER_MINUTE);
+  const secs = Math.floor((ms % MS_PER_MINUTE) / 1000);
+  if (years > 0) {
+    return `${years}y ${months}mo ago`;
+  } else if (months > 0) {
+    return `${months}mo ${weeks}w ago`;
+  } else if (weeks > 0) {
+    return `${weeks}w ${days}d ago`;
   } else if (days > 0) {
     return `${days}d ${hours}h ago`;
   } else if (hours > 0) {

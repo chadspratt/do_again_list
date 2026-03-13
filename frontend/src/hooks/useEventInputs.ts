@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { subtractTimeOffset, parseTimeOffsetMs } from '../utils';
+import { subtractTimeOffset, addTimeOffset } from '../utils';
 
 type OnUpdate = (
   eventId: number,
@@ -24,7 +24,7 @@ export function useEventInputs(eventId: number, onUpdate: OnUpdate) {
     const startDate = startInput.trim() ? subtractTimeOffset(startInput).toISOString() : undefined;
     const endDate = endInput.trim() ? subtractTimeOffset(endInput) : new Date();
     const nextTime = nextInput.trim()
-      ? new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString()
+      ? addTimeOffset(nextInput)?.toISOString()
       : undefined;
     onUpdate(eventId, 'end', startDate, endDate.toISOString(), nextTime);
     setStartInput('');
@@ -34,8 +34,10 @@ export function useEventInputs(eventId: number, onUpdate: OnUpdate) {
 
   function handleNext() {
     if (nextInput.trim()) {
-        const nextTime = new Date(Date.now() + parseTimeOffsetMs(nextInput)).toISOString();
-        onUpdate(eventId, 'set_next', undefined, undefined, nextTime);
+        const nextDate = addTimeOffset(nextInput);
+        if (nextDate) {
+          onUpdate(eventId, 'set_next', undefined, undefined, nextDate.toISOString());
+        }
         setNextInput('');
     }
   }
