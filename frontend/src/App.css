@@ -111,3 +111,57 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   50% { text-shadow: 0 0 12px rgba(168, 85, 247, 0.9), 0 0 20px rgba(168, 85, 247, 0.4); }
 }
 .code-name-glow { animation: text-glow 2s ease-in-out infinite; color: #7c3aed; font-weight: 600; }
+
+/* ───── Landing / Marketing Page ───── */
+
+.landing { max-width: 720px; margin: 0 auto; padding: 0 16px 60px; }
+
+/* Hero */
+.landing-hero { text-align: center; padding: 60px 0 40px; }
+.landing-logo { font-size: 2.6rem; margin-bottom: 12px; }
+.landing-tagline { font-size: 1.15rem; color: #555; max-width: 520px; margin: 0 auto 28px; line-height: 1.6; }
+.landing-auth-box { display: flex; justify-content: center; }
+.landing-auth-box .auth-controls { gap: 8px; }
+
+/* Sections */
+.landing-section { background: #fff; border-radius: 10px; padding: 32px 28px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.landing-section-alt { background: #f8f9fb; }
+.landing-section h2 { font-size: 1.3rem; margin-bottom: 12px; color: #1a1a1a; }
+.landing-section p { font-size: .95rem; line-height: 1.7; color: #444; margin-bottom: 12px; }
+.landing-section p:last-child { margin-bottom: 0; }
+.landing-section code { background: #eef2ff; color: #4338ca; padding: 2px 6px; border-radius: 4px; font-size: .88rem; white-space: nowrap; }
+
+/* Time-input examples */
+.landing-examples { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.landing-example-chip { background: #fff; border: 1px solid #e2e5ea; border-radius: 8px; padding: 8px 14px; font-size: .88rem; display: flex; align-items: center; gap: 8px; }
+.landing-example-chip code { background: #eef2ff; color: #4338ca; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.landing-example-chip span { color: #888; }
+
+/* Game preview */
+.landing-game-preview { margin-top: 16px; background: #f3f4f6; border-radius: 8px; padding: 14px 18px; border: 2px dashed #d1d5db; }
+.landing-game-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.landing-game-bar .stat { background: #fff; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: .85rem; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+/* Code-name demo */
+.landing-codename-demo { display: flex; justify-content: center; margin: 20px 0 16px; }
+.landing-codename-card { display: flex; align-items: center; gap: 20px; background: #f8f9fb; border-radius: 10px; padding: 18px 28px; border: 1px solid #e2e5ea; }
+.landing-cn-normal, .landing-cn-code { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.landing-cn-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #999; font-weight: 700; }
+.landing-cn-name { font-size: 1.15rem; font-weight: 600; }
+.landing-cn-arrow { font-size: 1.4rem; color: #aaa; }
+.landing-cn-glow { color: #7c3aed; text-shadow: 0 0 8px rgba(168,85,247,0.45); }
+.landing-toggle-icon { font-size: 1.1rem; vertical-align: middle; }
+
+/* CTA */
+.landing-cta { text-align: center; padding: 40px 28px; background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.landing-cta h2 { font-size: 1.3rem; margin-bottom: 8px; }
+.landing-cta p { font-size: .95rem; color: #666; margin-bottom: 20px; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .landing-hero { padding: 36px 0 28px; }
+  .landing-logo { font-size: 2rem; }
+  .landing-section { padding: 24px 18px; }
+  .landing-codename-card { flex-direction: column; gap: 8px; padding: 16px; }
+  .landing-cn-arrow { transform: rotate(90deg); }
+}

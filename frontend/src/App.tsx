@@ -20,6 +20,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { PendingPanel } from './components/PendingPanel';
 import { OneTimePanel } from './components/OneTimePanel';
 import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
+import { LandingPage } from './components/LandingPage';
 import { sortEventsByDue } from './utils';
 import './App.css';
 
@@ -213,6 +214,17 @@ export default function App() {
 
   if (loading) {
     return <div className="loading">Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <LandingPage
+        user={user}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
