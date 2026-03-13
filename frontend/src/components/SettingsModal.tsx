@@ -8,6 +8,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
+  const [displayName, setDisplayName] = useState('');
   const [defaultDuration, setDefaultDuration] = useState('');
   const [minDuration, setMinDuration] = useState('');
   const [maxDuration, setMaxDuration] = useState('');
@@ -18,6 +19,7 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
 
   useEffect(() => {
     if (event) {
+      setDisplayName(event.display_name || '');
       setDefaultDuration(event.default_duration || '');
       setMinDuration(event.min_duration || '');
       setMaxDuration(event.max_duration || '');
@@ -33,6 +35,8 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
   function handleSave() {
     if (!event) return;
     onSave(event.id, {
+      display_name: displayName,
+      ...(event.is_built_in ? {} : { title: displayName }),
       default_duration: defaultDuration,
       min_duration: minDuration,
       max_duration: maxDuration,
@@ -56,13 +60,23 @@ export function SettingsModal({ event, onClose, onSave }: SettingsModalProps) {
         </h2>
 
         <div className="form-group">
+          <label>Event Name</label>
+          <input
+            type="text"
+            placeholder="Display name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        <div className="form-group">
           <label>Default Duration (e.g. 1h30m)</label>
           <input
             type="text"
             placeholder="e.g. 1h, 30m, 1h30m"
             value={defaultDuration}
             onChange={(e) => setDefaultDuration(e.target.value)}
-            autoFocus
           />
           <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
             Auto-fill start time when clicking End and the start input is blank. Blank = disabled.
