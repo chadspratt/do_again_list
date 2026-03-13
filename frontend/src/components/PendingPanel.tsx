@@ -8,6 +8,7 @@ interface PendingPanelProps {
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }
 
 function PendingCard({
@@ -16,12 +17,14 @@ function PendingCard({
   onDelete,
   onOpenSettings,
   useCodeNames,
+  hintCodeNames,
 }: {
   event: DoAgainEvent;
   onUpdate: PendingPanelProps['onUpdate'];
   onDelete: PendingPanelProps['onDelete'];
   onOpenSettings: PendingPanelProps['onOpenSettings'];
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }) {
   const {
     startInput, setStartInput,
@@ -38,8 +41,8 @@ function PendingCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
-      <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
-      <div className="event-title">{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
+      <span className={`settings-icon${hintCodeNames ? ' settings-glow' : ''}`} onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
+      <div className="event-title" title={useCodeNames && event.code_name ? event.display_name : undefined}>{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
       {isHovered && (
         <div className="card-hover-actions">
           <div className="pending-actions">
@@ -77,7 +80,7 @@ function PendingCard({
   );
 }
 
-export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings, useCodeNames }: PendingPanelProps) {
+export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings, useCodeNames, hintCodeNames }: PendingPanelProps) {
   if (events.length === 0) {
     return (
       <div className="pending-panel">
@@ -98,6 +101,7 @@ export function PendingPanel({ events, onUpdate, onDelete, onOpenSettings, useCo
           onDelete={onDelete}
           onOpenSettings={onOpenSettings}
           useCodeNames={useCodeNames}
+          hintCodeNames={hintCodeNames}
         />
       ))}
     </div>

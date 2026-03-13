@@ -6,9 +6,10 @@ interface SettingsModalProps {
   onClose: () => void;
   onSave: (eventId: number, settings: EventSettings) => void;
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }
 
-export function SettingsModal({ event, onClose, onSave, useCodeNames }: SettingsModalProps) {
+export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNames }: SettingsModalProps) {
   const [displayName, setDisplayName] = useState('');
   const [codeName, setCodeName] = useState('');
   const [defaultDuration, setDefaultDuration] = useState('');
@@ -67,7 +68,14 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames }: Settings
         </h2>
 
         <div className="form-group">
-          <label>{useCodeNames ? 'Code Name' : 'Event Name'}</label>
+          <label>
+            {hintCodeNames ? (
+              <>
+                <span style={{ textDecoration: 'line-through', opacity: 0.5 }}>Event Name</span>{' '}
+                <span className="code-name-glow">Code Name</span>
+              </>
+            ) : useCodeNames ? 'Code Name' : 'Event Name'}
+          </label>
           <input
             type="text"
             placeholder={useCodeNames ? 'Code name' : 'Display name'}

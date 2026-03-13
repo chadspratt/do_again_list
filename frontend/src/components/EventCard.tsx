@@ -11,6 +11,7 @@ interface EventCardProps {
   onOpenSettings: (event: DoAgainEvent) => void;
   dataEventId?: number;
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -22,7 +23,7 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
   hour12: true,
 };
 
-export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId, useCodeNames }: EventCardProps) {
+export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId, useCodeNames, hintCodeNames }: EventCardProps) {
   const {
     startInput, setStartInput,
     endInput, setEndInput,
@@ -91,10 +92,10 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete event">
         🗑️
       </span>
-      <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Event settings">
+      <span className={`settings-icon${hintCodeNames ? ' settings-glow' : ''}`} onClick={() => onOpenSettings(event)} title="Event settings">
         ⚙️
       </span>
-      <div className="event-title">{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
+      <div className="event-title" title={useCodeNames && event.code_name ? event.display_name : undefined}>{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
       <div className="event-date" style={{ whiteSpace: 'pre-line' }}>
         {dateDisplay}
       </div>

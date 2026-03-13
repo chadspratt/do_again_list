@@ -40,6 +40,7 @@ export default function App() {
   const pendingEvents = events.filter(e => e.repeats && e.start_time === null && e.end_time === null);
   const activeEvents = events.filter(e => e.repeats && e.start_time !== null);
   const displayedEvents = sortMode === 'due' ? sortEventsByDue(activeEvents, now) : activeEvents;
+  const hintCodeNames = useCodeNames && !events.some(e => e.code_name && e.code_name.trim() !== '');
 
   const loadEvents = useCallback(async () => {
     try {
@@ -252,6 +253,7 @@ export default function App() {
           onDelete={handleDelete}
           onOpenSettings={(event) => setSettingsEvent(event)}
           useCodeNames={useCodeNames}
+          hintCodeNames={hintCodeNames}
         />
         <div className="main-panel">
           <EventGrid
@@ -261,6 +263,7 @@ export default function App() {
             onDelete={handleDelete}
             onOpenSettings={(event) => setSettingsEvent(event)}
             useCodeNames={useCodeNames}
+            hintCodeNames={hintCodeNames}
           />
         </div>
         <OneTimePanel
@@ -270,6 +273,7 @@ export default function App() {
           onDelete={handleDelete}
           onOpenSettings={(event) => setSettingsEvent(event)}
           useCodeNames={useCodeNames}
+          hintCodeNames={hintCodeNames}
         />
       </div>
       <NewEventModal
@@ -282,6 +286,7 @@ export default function App() {
         onClose={() => setSettingsEvent(null)}
         onSave={handleSaveSettings}
         useCodeNames={useCodeNames}
+        hintCodeNames={hintCodeNames}
       />
     </>
   );

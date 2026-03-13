@@ -10,6 +10,7 @@ interface OneTimePanelProps {
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }
 
 function OneTimeCard({
@@ -19,6 +20,7 @@ function OneTimeCard({
   onDelete,
   onOpenSettings,
   useCodeNames,
+  hintCodeNames,
 }: {
   event: DoAgainEvent;
   now: number;
@@ -26,6 +28,7 @@ function OneTimeCard({
   onDelete: OneTimePanelProps['onDelete'];
   onOpenSettings: OneTimePanelProps['onOpenSettings'];
   useCodeNames?: boolean;
+  hintCodeNames?: boolean;
 }) {
   const {
     startInput, setStartInput,
@@ -56,8 +59,8 @@ function OneTimeCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <span className="delete-icon" onClick={() => onDelete(event.id)} title="Delete">🗑️</span>
-      <span className="settings-icon" onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
-      <div className="event-title">{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
+      <span className={`settings-icon${hintCodeNames ? ' settings-glow' : ''}`} onClick={() => onOpenSettings(event)} title="Settings">⚙️</span>
+      <div className="event-title" title={useCodeNames && event.code_name ? event.display_name : undefined}>{useCodeNames && event.code_name ? event.code_name : event.display_name}</div>
       {timerText && <div className="onetime-timer">{timerText}</div>}
       {isHovered && (
         <div className="card-hover-actions">
@@ -94,7 +97,7 @@ function OneTimeCard({
   );
 }
 
-export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings, useCodeNames }: OneTimePanelProps) {
+export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings, useCodeNames, hintCodeNames }: OneTimePanelProps) {
   const [showCompleted, setShowCompleted] = useState(false);
 
   const visibleEvents = showCompleted
@@ -127,6 +130,7 @@ export function OneTimePanel({ events, now, onUpdate, onDelete, onOpenSettings, 
             onDelete={onDelete}
             onOpenSettings={onOpenSettings}
             useCodeNames={useCodeNames}
+            hintCodeNames={hintCodeNames}
           />
         ))
       )}
