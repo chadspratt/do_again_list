@@ -15,7 +15,7 @@ export function LandingPage({ user, onLogin, onRegister, onLogout }: LandingPage
       <section className="landing-hero">
         <h1 className="landing-logo">⏱️ Do Again List</h1>
         <p className="landing-tagline">
-          Track the things you want to do more&mdash;or less&mdash;without
+          Track the things you want to do more, or less, without
           stressing over perfect data.
         </p>
         <div className="landing-auth-box">
@@ -105,7 +105,8 @@ export function LandingPage({ user, onLogin, onRegister, onLogout }: LandingPage
       <section className="landing-section">
         <h2>Code names: make it yours</h2>
         <p>
-          Don't want your screen to read like a chore list? Give any Activity a
+          Don't want your screen to read like a chore list or don't want to spell
+          out every bad habit for someone to see over your shoulder? Give any Activity a
           <strong> Code Name</strong> and toggle between normal names and code
           names with one click. Your mundane tasks become quests:
         </p>

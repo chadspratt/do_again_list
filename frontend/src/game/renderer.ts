@@ -50,9 +50,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, state: BattleState) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 24px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('💀 Respawning...', CANVAS_W / 2, CANVAS_H / 2 - 10);
+    ctx.fillText('💀 Run Over', CANVAS_W / 2, CANVAS_H / 2 - 10);
     ctx.font = '14px sans-serif';
-    ctx.fillText(`${state.hero.respawnTimer.toFixed(1)}s`, CANVAS_W / 2, CANVAS_H / 2 + 16);
+    ctx.fillText('Collecting souls...', CANVAS_W / 2, CANVAS_H / 2 + 16);
     ctx.textAlign = 'left';
   }
 }

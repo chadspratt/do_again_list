@@ -10,6 +10,8 @@ import {
   authRegister,
   authLogin,
   authLogout,
+  metaUpgrade,
+  type UpgradeType,
 } from './api';
 import type { DoAgainEvent, EventSettings, GameState } from './types';
 import type { AuthUser } from './api';
@@ -21,6 +23,7 @@ import { PendingPanel } from './components/PendingPanel';
 import { OneTimePanel } from './components/OneTimePanel';
 import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
 import { LandingPage } from './components/LandingPage';
+import { RunOverScreen } from './components/RunOverScreen';
 import { sortEventsByDue } from './utils';
 import './App.css';
 
@@ -35,6 +38,9 @@ export default function App() {
   const [useCodeNames, setUseCodeNames] = useState(false);
   const battleLaneRef = useRef<BattleLaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  // Prestige / run-over state
+  const [runOverData, setRunOverData] = useState<{ soulsEarned: number } | null>(null);
+  const [runKey, setRunKey] = useState(0);  // increment to force BattleLane remount
 
   // One-time (repeats === false) takes priority over pending for panel assignment
   const oneTimeEvents = events.filter(e => !e.repeats);
@@ -183,6 +189,23 @@ export default function App() {
     [],
   );
 
+  const handleRunOver = useCallback((soulsEarned: number, gs: GameState) => {
+    setGameState(gs);
+    setRunOverData({ soulsEarned });
+  }, []);
+
+  const handleMetaUpgrade = useCallback(async (upgrade: UpgradeType) => {
+    const gs = await metaUpgrade(upgrade);
+    setGameState(gs);
+  }, []);
+
+  const handleStartNewRun = useCallback(() => {
+    setRunOverData(null);
+    setRunKey(k => k + 1);
+    // Reload game state so BattleLane initializes with permanent bonuses
+    loadGameState();
+  }, [loadGameState]);
+
   const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
     const res = await authLogin(username, password);
     if (res.success && res.user) {
@@ -236,7 +259,21 @@ export default function App() {
         onLogout={handleLogout}
       />
       {gameState && (
-        <BattleLane ref={battleLaneRef} gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
+        <BattleLane
+          key={runKey}
+          ref={battleLaneRef}
+          gameState={gameState}
+          onGameStateUpdate={handleGameStateUpdate}
+          onRunOver={handleRunOver}
+        />
+      )}
+      {runOverData && gameState && (
+        <RunOverScreen
+          gameState={gameState}
+          soulsEarned={runOverData.soulsEarned}
+          onUpgrade={handleMetaUpgrade}
+          onStartNewRun={handleStartNewRun}
+        />
       )}
       <div className="event-toolbar">
         <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>

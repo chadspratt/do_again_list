@@ -97,17 +97,40 @@ class GameState(models.Model):
     items = models.JSONField(default=list)
     hero_hp = models.IntegerField(default=-1)  # -1 = not persisted yet, use full HP
 
+    # ── Prestige / meta-progression ──
+    # souls persists forever; gold/xp/level/items are wiped on run-over.
+    souls = models.IntegerField(default=0)
+    perm_attack = models.IntegerField(default=0)   # levels of permanent attack bonus
+    perm_defense = models.IntegerField(default=0)  # levels of permanent defense bonus
+    perm_speed = models.IntegerField(default=0)    # levels of permanent speed bonus
+    perm_hp = models.IntegerField(default=0)       # levels of permanent HP bonus (+10 HP each)
+
+    # ── Computed stats ──
+
     def total_attack(self):
-        return self.base_attack + self.level
+        return self.base_attack + self.level + self.perm_attack
 
     def total_defense(self):
-        return self.base_defense + (self.level // 2)
+        return self.base_defense + (self.level // 2) + self.perm_defense
 
     def total_speed(self):
-        return self.base_speed + max(0, self.streak // 3)
+        return self.base_speed + max(0, self.streak // 3) + self.perm_speed
+
+    def max_hp(self):
+        """Hero's maximum HP for this run, including permanent bonus."""
+        return 100 + self.level * 10 + self.perm_hp * 10
 
     def xp_to_next_level(self):
         return self.level * 100
+
+    def souls_for_run(self):
+        """Calculate souls earned at end of run from current XP + level."""
+        return max(1, (self.level - 1) * 5 + self.xp // 20)
+
+    @staticmethod
+    def upgrade_cost(current_level: int) -> int:
+        """Soul cost to buy the next level of a permanent upgrade."""
+        return (current_level + 1) * 10
 
     def add_xp(self, amount):
         """Add XP and auto-level-up. Returns list of level-up messages."""

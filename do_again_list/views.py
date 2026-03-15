@@ -263,6 +263,65 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         game_state.save()
         return Response(serializers.GameStateSerializer(game_state).data)
 
+    @action(detail=False, methods=["post"])
+    def run_over(self, request: Request) -> Response:
+        """End the current run: convert progress to souls, then wipe run-local state.
+
+        Permanent fields (souls, perm_*) are preserved.
+        Run-local fields (xp, gold, level, base_*, streak, items, hero_hp) are reset.
+        """
+        game_state, _ = GameState.objects.get_or_create(owner=request.user)
+        souls_earned = game_state.souls_for_run()
+        game_state.souls += souls_earned
+        # Reset run-local state
+        game_state.xp = 0
+        game_state.gold = 0
+        game_state.level = 1
+        game_state.base_attack = 1
+        game_state.base_defense = 0
+        game_state.base_speed = 1
+        game_state.streak = 0
+        game_state.items = []
+        game_state.hero_hp = -1
+        game_state.save()
+        serializer = serializers.RunOverResponseSerializer(
+            data={"game": serializers.GameStateSerializer(game_state).data, "souls_earned": souls_earned}
+        )
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def meta_upgrade(self, request: Request) -> Response:
+        """Spend souls on a permanent upgrade.
+
+        Expects body: { \"upgrade\": \"attack\" | \"defense\" | \"speed\" | \"hp\" }
+        """
+        serializer = serializers.MetaUpgradeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        upgrade: str = serializer.validated_data["upgrade"]
+
+        field_map = {
+            "attack": "perm_attack",
+            "defense": "perm_defense",
+            "speed": "perm_speed",
+            "hp": "perm_hp",
+        }
+        game_state, _ = GameState.objects.get_or_create(owner=request.user)
+        field_name = field_map[upgrade]
+        current_level: int = getattr(game_state, field_name)
+        cost = GameState.upgrade_cost(current_level)
+
+        if game_state.souls < cost:
+            return Response(
+                {"error": f"Not enough souls. Need {cost}, have {game_state.souls}."},
+                status=400,
+            )
+
+        game_state.souls -= cost
+        setattr(game_state, field_name, current_level + 1)
+        game_state.save()
+        return Response(serializers.GameStateSerializer(game_state).data)
+
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
 

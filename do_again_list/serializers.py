@@ -91,10 +91,16 @@ class GameStateSerializer(serializers.ModelSerializer):
     total_defense = serializers.SerializerMethodField()
     total_speed = serializers.SerializerMethodField()
     xp_to_next_level = serializers.SerializerMethodField()
+    max_hp = serializers.SerializerMethodField()
 
     class Meta:
         model = models.GameState
         exclude = ("owner",)
+
+    def get_max_hp(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("max_hp", 100)
+        return obj.max_hp()
 
     def get_total_attack(self, obj: models.GameState | dict) -> int:
         if isinstance(obj, dict):
@@ -120,6 +126,17 @@ class GameStateSerializer(serializers.ModelSerializer):
         if isinstance(data, models.GameState):
             return data
         return super().to_internal_value(data)  # type: ignore
+
+
+class RunOverResponseSerializer(serializers.Serializer):
+    """Response body for POST /game/run_over/."""
+    game = GameStateSerializer()
+    souls_earned = serializers.IntegerField()
+
+
+class MetaUpgradeSerializer(serializers.Serializer):
+    """Request body for POST /game/meta_upgrade/."""
+    upgrade = serializers.ChoiceField(choices=["attack", "defense", "speed", "hp"])
 
 
 class ActivityActionSerializer(serializers.Serializer):

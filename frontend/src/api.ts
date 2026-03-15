@@ -88,6 +88,30 @@ export async function syncBattleState(gold: number, xp: number, streak: number, 
   return res.json();
 }
 
+export interface RunOverResponse {
+  game: GameState;
+  souls_earned: number;
+}
+
+/** Call when the hero's run ends. Converts current XP/level to souls and resets run state. */
+export async function runOverRun(): Promise<RunOverResponse> {
+  const res = await apiRequest(`${API_BASE}/game/run_over/`, 'POST');
+  if (!res.ok) throw new Error('run_over failed');
+  return res.json();
+}
+
+export type UpgradeType = 'attack' | 'defense' | 'speed' | 'hp';
+
+/** Spend souls to buy one level of a permanent upgrade. */
+export async function metaUpgrade(upgrade: UpgradeType): Promise<GameState> {
+  const res = await apiRequest(`${API_BASE}/game/meta_upgrade/`, 'POST', { upgrade });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'meta_upgrade failed');
+  }
+  return res.json();
+}
+
 // ─── Auth (still uses legacy Django views) ──────────────────────────
 
 const AUTH_BASE = '/do_again/api';

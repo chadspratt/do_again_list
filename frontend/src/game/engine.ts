@@ -19,7 +19,6 @@ export interface Entity {
 
 export interface Hero extends Entity {
   alive: boolean;
-  respawnTimer: number;
   killStreak: number;
 }
 
@@ -66,7 +65,6 @@ export const CANVAS_W = 1500;
 export const CANVAS_H = 150;
 export const GROUND_Y = CANVAS_H - 50;
 const HERO_X = 80;
-const RESPAWN_TIME = 2.0;
 const ENEMY_BASE_HP = 30;
 const ENEMY_BASE_ATK = 4;
 const HERO_BASE_HP = 100;
@@ -91,11 +89,12 @@ export function createBattleState(gameState: GameState): BattleState {
 }
 
 function createHero(gs: GameState): Hero {
+  const maxHp = gs.max_hp ?? (HERO_BASE_HP + gs.level * 10);
   return {
     x: HERO_X,
     y: GROUND_Y,
-    hp: HERO_BASE_HP + gs.level * 10,
-    maxHp: HERO_BASE_HP + gs.level * 10,
+    hp: maxHp,
+    maxHp,
     attack: gs.total_attack,
     defense: gs.total_defense,
     speed: 30 + gs.total_speed * 5,
@@ -105,7 +104,6 @@ function createHero(gs: GameState): Hero {
     height: 36,
     facingRight: true,
     alive: true,
-    respawnTimer: 0,
     killStreak: gs.streak,
   };
 }
@@ -187,13 +185,14 @@ export interface TickResult {
   goldEarned: number;
   xpEarned: number;
   heroDied: boolean;
-  heroRespawned: boolean;
+  /** True when the run ends (hero died — no respawn). BattleLane should stop the loop. */
+  runOver: boolean;
   distance: number;
   killStreak: number;
 }
 
 export function tick(state: BattleState, gs: GameState, dt: number): TickResult {
-  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, heroRespawned: false, distance: state.distance, killStreak: state.hero.killStreak };
+  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, runOver: false, distance: state.distance, killStreak: state.hero.killStreak };
   const hero = state.hero;
 
   // Update floating texts
@@ -217,6 +216,13 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
   hero.speed = 30 + (gs.total_speed + speedBuff) * 5;
   hero.attackCooldown = Math.max(0.4, 1.2 - (gs.total_speed + speedBuff) * 0.05);
 
+  // Sync max HP (level-up during run can raise it via perm bonuses too)
+  const expectedMaxHp = gs.max_hp ?? (100 + gs.level * 10);
+  if (expectedMaxHp > hero.maxHp) {
+    hero.hp += expectedMaxHp - hero.maxHp;
+    hero.maxHp = expectedMaxHp;
+  }
+
   // Process pending effects from app actions
   if (state.pendingHeal && hero.alive) {
     hero.hp = hero.maxHp;
@@ -231,21 +237,15 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
     if (hero.hp <= 0) {
       hero.hp = 0;
       hero.alive = false;
-      hero.respawnTimer = RESPAWN_TIME;
       result.heroDied = true;
     }
   }
 
-  // Hero dead → respawn countdown
+  // Hero dead → run is over (no respawn)
   if (!hero.alive) {
-    hero.respawnTimer -= dt;
-    if (hero.respawnTimer <= 0) {
-      const newHero = createHero(gs);
-      Object.assign(hero, newHero);
-      state.distance = 0;
-      state.enemies = [];
-      result.heroRespawned = true;
-    }
+    state.running = false;
+    result.runOver = true;
+    // Keep fading dead enemies for visual polish
     state.enemies = state.enemies.filter(e => !e.dead || e.deathTimer > 0);
     state.enemies.forEach(e => { if (e.dead) e.deathTimer -= dt; });
     return result;
@@ -313,7 +313,6 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       if (hero.hp <= 0) {
         hero.hp = 0;
         hero.alive = false;
-        hero.respawnTimer = RESPAWN_TIME;
         result.heroDied = true;
         state.buffs = [];       // Remove all buffs on death
         state.hero.killStreak = 0;   // Reset streak on death

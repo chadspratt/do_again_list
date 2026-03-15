@@ -43,8 +43,15 @@ export interface GameState {
   total_defense: number;
   total_speed: number;
   xp_to_next_level: number;
+  max_hp: number;
   streak: number;
   items: string[];
   hero_hp: number;
   spawn_first_enemy?: boolean;
+  // ── Prestige / meta-progression ──
+  souls: number;
+  perm_attack: number;
+  perm_defense: number;
+  perm_speed: number;
+  perm_hp: number;
 }

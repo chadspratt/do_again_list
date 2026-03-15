@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useSta
 import type { GameState } from '../types';
 import { createBattleState, tick, spawnEnemyFromEvent, applyBuff, type BattleState } from '../game/engine';
 import { renderFrame } from '../game/renderer';
-import { syncBattleState } from '../api';
+import { syncBattleState, runOverRun } from '../api';
 
 export interface BattleLaneHandle {
   spawnEnemy: (level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) => void;
@@ -15,14 +15,17 @@ export interface BattleLaneHandle {
 interface BattleLaneProps {
   gameState: GameState;
   onGameStateUpdate: (gs: GameState) => void;
+  /** Called with souls earned and updated GameState when the run ends. */
+  onRunOver: (soulsEarned: number, gs: GameState) => void;
 }
 
-export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function BattleLane({ gameState, onGameStateUpdate }, ref) {
+export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function BattleLane({ gameState, onGameStateUpdate, onRunOver }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const battleRef = useRef<BattleState | null>(null);
   const gameStateRef = useRef(gameState);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const isRunOverRef = useRef(false);
   const [killStreak, setKillStreak] = useState(gameState.streak);
 
   // Keep gameState ref current
@@ -30,6 +33,7 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
 
   // Initialize battle state
   useEffect(() => {
+    isRunOverRef.current = false;
     battleRef.current = createBattleState(gameState);
     // Restore persisted HP from server (hero_hp > 0 means a saved value exists;
     // hero_hp <= 0 means the hero was dead or not yet persisted, so use full HP)
@@ -53,7 +57,7 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
     hero.defense = gameState.total_defense;
     hero.speed = 30 + gameState.total_speed * 5;
     hero.attackCooldown = Math.max(0.4, 1.2 - gameState.total_speed * 0.05);
-    const newMaxHp = 100 + gameState.level * 10;
+    const newMaxHp = gameState.max_hp ?? (100 + gameState.level * 10);
     if (newMaxHp > hero.maxHp) {
       hero.hp += newMaxHp - hero.maxHp;
       hero.maxHp = newMaxHp;
@@ -114,31 +118,32 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
     // Sync kill streak display
     setKillStreak(result.killStreak);
 
-    // Sync with server on enemy kill or hero death
+    // Sync with server on enemy kill
     if (result.goldEarned > 0 || result.xpEarned > 0) {
       syncBattleState(result.goldEarned, result.xpEarned, battle.hero.killStreak, battle.hero.hp)
+        .then(gs => onGameStateUpdate(gs))
         .catch((error) => {
           console.error('Failed to sync battle state on reward update:', error);
         });
     }
-    if (result.heroDied) {
-      syncBattleState(0, 0, 0, 0)
-        .then(gs => onGameStateUpdate(gs))
+
+    // Render current frame (including death overlay)
+    renderFrame(ctx, battle);
+
+    // Run is over — stop the loop and hand off to the prestige screen
+    if (result.runOver && !isRunOverRef.current) {
+      isRunOverRef.current = true;
+      cancelAnimationFrame(animationRef.current);
+      runOverRun()
+        .then(({ game, souls_earned }) => onRunOver(souls_earned, game))
         .catch((error) => {
-          console.error('Failed to sync battle state on hero death:', error);
+          console.error('Failed to call run_over:', error);
         });
-    }
-    if (result.heroRespawned) {
-      syncBattleState(0, 0, battle.hero.killStreak, battle.hero.hp)
-        .then(gs => onGameStateUpdate(gs))
-        .catch((error) => {
-          console.error('Failed to sync battle state on hero respawn:', error);
-        });
+      return;
     }
 
-    renderFrame(ctx, battle);
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [onGameStateUpdate]);
+  }, [onGameStateUpdate, onRunOver]);
 
   useEffect(() => {
     animationRef.current = requestAnimationFrame(gameLoop);
@@ -161,7 +166,8 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
         <span className="stat">⚡ {gameState.total_speed}</span>
         <span className="stat">⭐ Lv {gameState.level}</span>
         <span className="stat">💰 {gameState.gold}</span>
-        <span className="stat">🔥 Streak: {killStreak}</span>
+        <span className="stat">� {gameState.souls}</span>
+        <span className="stat">�🔥 Streak: {killStreak}</span>
       </div>
       <div className="xp-bar-container">
         <div className="xp-bar-fill" style={{ width: `${(gameState.xp / gameState.xp_to_next_level) * 100}%` }} />
