@@ -4,7 +4,8 @@ from typing import Any, cast
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models.manager import BaseManager
+# from django.db.models.manager import BaseManager
+from django.db.models.query import QuerySet
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
@@ -18,7 +19,6 @@ from rest_framework.response import Response
 
 from . import serializers, services
 from .models import Activity, GameState, Occurance
-from .utils import humanize_timedelta, parse_time_offset
 
 # === Django Rest Framework Viewsets === #
 
@@ -50,7 +50,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     filterset_class = ActivityFilter
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self) -> BaseManager[Activity]: # type: ignore
+    def get_queryset(self) -> QuerySet[Activity]:
         user = self.request.user
         return Activity.objects.filter(owner=user).prefetch_related("occurances")
 
@@ -227,7 +227,7 @@ class OccuranceViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = OccuranceFilter
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self) -> BaseManager[Occurance]: # type: ignore
+    def get_queryset(self) -> QuerySet[Occurance]:
         user = self.request.user
         return Occurance.objects.filter(activity__owner=user)
 
@@ -237,7 +237,7 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = serializers.GameStateSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self) -> BaseManager[GameState]: # type: ignore
+    def get_queryset(self) -> QuerySet[GameState]:
         user = self.request.user
         return GameState.objects.filter(owner=user)
 
@@ -289,6 +289,24 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         )
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def accept_quest(self, request: Request) -> Response:
+        """Spend quest tokens to accept a quest from the Jobs Board.
+
+        Expects body: { "cost": <int> }
+        Returns updated GameState.
+        """
+        game_state, _ = GameState.objects.get_or_create(owner=request.user)
+        cost = max(1, int(request.data.get("cost", 1)))
+        if game_state.quest_tokens < cost:
+            return Response(
+                {"error": f"Not enough quest tokens. Need {cost}, have {game_state.quest_tokens}."},
+                status=400,
+            )
+        game_state.quest_tokens -= cost
+        game_state.save()
+        return Response(serializers.GameStateSerializer(game_state).data)
 
     @action(detail=False, methods=["post"])
     def meta_upgrade(self, request: Request) -> Response:
@@ -374,7 +392,7 @@ def api_auth_login(request):
                 {"success": False, "error": "Invalid username or password."}
             )
         login(request, user)
-        return JsonResponse({"success": True, "user": {"username": user.username}})
+        return JsonResponse({"success": True, "user": {"username": user.get_username()}})
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})
 

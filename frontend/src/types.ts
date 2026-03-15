@@ -54,4 +54,6 @@ export interface GameState {
   perm_defense: number;
   perm_speed: number;
   perm_hp: number;
+  // ── Quest system ──
+  quest_tokens: number;
 }

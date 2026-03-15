@@ -105,6 +105,9 @@ class GameState(models.Model):
     perm_speed = models.IntegerField(default=0)    # levels of permanent speed bonus
     perm_hp = models.IntegerField(default=0)       # levels of permanent HP bonus (+10 HP each)
 
+    # ── Quest system ──
+    quest_tokens = models.IntegerField(default=0)  # earned by completing activities
+
     # ── Computed stats ──
 
     def total_attack(self):

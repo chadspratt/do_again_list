@@ -112,6 +112,16 @@ export async function metaUpgrade(upgrade: UpgradeType): Promise<GameState> {
   return res.json();
 }
 
+/** Spend quest tokens to accept a quest from the Jobs Board. */
+export async function acceptQuest(cost: number): Promise<GameState> {
+  const res = await apiRequest(`${API_BASE}/game/accept_quest/`, 'POST', { cost });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'accept_quest failed');
+  }
+  return res.json();
+}
+
 // ─── Auth (still uses legacy Django views) ──────────────────────────
 
 const AUTH_BASE = '/do_again/api';

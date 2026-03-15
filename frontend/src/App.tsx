@@ -11,6 +11,7 @@ import {
   authLogin,
   authLogout,
   metaUpgrade,
+  syncBattleState,
   type UpgradeType,
 } from './api';
 import type { DoAgainEvent, EventSettings, GameState } from './types';
@@ -22,6 +23,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { PendingPanel } from './components/PendingPanel';
 import { OneTimePanel } from './components/OneTimePanel';
 import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
+import { QuestLane } from './components/QuestLane';
 import { LandingPage } from './components/LandingPage';
 import { RunOverScreen } from './components/RunOverScreen';
 import { sortEventsByDue } from './utils';
@@ -41,6 +43,10 @@ export default function App() {
   // Prestige / run-over state
   const [runOverData, setRunOverData] = useState<{ soulsEarned: number } | null>(null);
   const [runKey, setRunKey] = useState(0);  // increment to force BattleLane remount
+  // Quest state
+  const [questActive, setQuestActive] = useState(false);
+  const [questKey, setQuestKey] = useState(0);
+  const prevTokensRef = useRef<number | null>(null);
 
   // One-time (repeats === false) takes priority over pending for panel assignment
   const oneTimeEvents = events.filter(e => !e.repeats);
@@ -206,6 +212,42 @@ export default function App() {
     loadGameState();
   }, [loadGameState]);
 
+  // Auto-enter quest mode when a user first gains a quest token
+  useEffect(() => {
+    if (!gameState) return;
+    const prev = prevTokensRef.current;
+    prevTokensRef.current = gameState.quest_tokens;
+    // Transition when tokens are > 0 on first load (prev===null) OR when they go from 0 → positive
+    if ((prev === null || prev === 0) && gameState.quest_tokens > 0 && !questActive && !runOverData) {
+      setQuestActive(true);
+      setQuestKey(k => k + 1);
+    }
+  }, [gameState, questActive, runOverData]);
+
+  const handleQuestComplete = useCallback((goldEarned: number, xpEarned: number) => {
+    setQuestActive(false);
+    // Sync any remaining rewards
+    if (goldEarned > 0 || xpEarned > 0) {
+      syncBattleState(goldEarned, xpEarned, 0, -1)
+        .then(gs => setGameState(gs))
+        .catch(err => console.error('Quest complete sync failed:', err));
+    }
+    loadGameState();
+  }, [loadGameState]);
+
+  const handleQuestFailed = useCallback((soulsEarned: number, gs: GameState) => {
+    setQuestActive(false);
+    setGameState(gs);
+    setRunOverData({ soulsEarned });
+  }, []);
+
+  const handleEnterQuest = useCallback(() => {
+    if (gameState && gameState.quest_tokens > 0) {
+      setQuestActive(true);
+      setQuestKey(k => k + 1);
+    }
+  }, [gameState]);
+
   const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
     const res = await authLogin(username, password);
     if (res.success && res.user) {
@@ -258,13 +300,22 @@ export default function App() {
         onRegister={handleRegister}
         onLogout={handleLogout}
       />
-      {gameState && (
+      {gameState && !questActive && (
         <BattleLane
           key={runKey}
           ref={battleLaneRef}
           gameState={gameState}
           onGameStateUpdate={handleGameStateUpdate}
           onRunOver={handleRunOver}
+        />
+      )}
+      {gameState && questActive && (
+        <QuestLane
+          key={questKey}
+          gameState={gameState}
+          onGameStateUpdate={handleGameStateUpdate}
+          onQuestComplete={handleQuestComplete}
+          onQuestFailed={handleQuestFailed}
         />
       )}
       {runOverData && gameState && (
@@ -279,6 +330,11 @@ export default function App() {
         <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
           + Add Event
         </button>
+        {gameState && gameState.quest_tokens > 0 && !questActive && !runOverData && (
+          <button className="btn btn-success" onClick={handleEnterQuest}>
+            🎫 Quest ({gameState.quest_tokens})
+          </button>
+        )}
         <button
           className={`btn ${sortMode === 'due' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setSortMode(m => m === 'recent' ? 'due' : 'recent')}

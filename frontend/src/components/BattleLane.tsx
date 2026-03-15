@@ -3,6 +3,7 @@ import type { GameState } from '../types';
 import { createBattleState, tick, spawnEnemyFromEvent, applyBuff, type BattleState } from '../game/engine';
 import { renderFrame } from '../game/renderer';
 import { syncBattleState, runOverRun } from '../api';
+import { GameHUD } from './GameHUD';
 
 export interface BattleLaneHandle {
   spawnEnemy: (level: number, statModifier?: { attack?: number; defense?: number; speed?: number }) => void;
@@ -160,19 +161,10 @@ export const BattleLane = forwardRef<BattleLaneHandle, BattleLaneProps>(function
         height={150}
         className="battle-canvas"
       />
-      <div className="battle-stats">
-        <span className="stat">🗡️ {gameState.total_attack}</span>
-        <span className="stat">🛡️ {gameState.total_defense}</span>
-        <span className="stat">⚡ {gameState.total_speed}</span>
-        <span className="stat">⭐ Lv {gameState.level}</span>
-        <span className="stat">💰 {gameState.gold}</span>
-        <span className="stat">� {gameState.souls}</span>
-        <span className="stat">�🔥 Streak: {killStreak}</span>
-      </div>
-      <div className="xp-bar-container">
-        <div className="xp-bar-fill" style={{ width: `${(gameState.xp / gameState.xp_to_next_level) * 100}%` }} />
-        <span className="xp-bar-text">{gameState.xp} / {gameState.xp_to_next_level} XP</span>
-      </div>
+      <GameHUD
+        gameState={gameState}
+        extraStats={<span className="stat">🔥 Streak: {killStreak}</span>}
+      />
     </div>
   );
 });

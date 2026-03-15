@@ -30,6 +30,7 @@ class GameStateDelta(Addable):
     base_speed: int = 0
     streak: int = 0
     hero_hp: int = 0
+    quest_tokens: int = 0
     # items: list[Item] = []
 
 
@@ -246,6 +247,8 @@ class ActivityService:
         game_effect.spawn_enemy = SpawnEnemy(
             level=(kill_streak // 3) + 1, stat_modifier=stat_modifier.times(-1)
         )
+        # Award a quest token for completing an activity
+        game_effect.game_state_delta.quest_tokens += 1
         return game_effect
 
     def set_next(

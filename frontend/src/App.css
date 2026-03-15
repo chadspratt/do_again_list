@@ -314,3 +314,108 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .run-over-upgrades { grid-template-columns: 1fr; }
   .run-over-stats { gap: 14px; }
 }
+
+/* ── Quest / Jobs Board ── */
+
+.quest-lane-wrapper {
+  position: relative;
+  max-width: 1500px;
+  margin: 0 auto 12px;
+}
+
+.jobs-board-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+  border-radius: 8px;
+}
+
+.jobs-board {
+  background: #fef3cd;
+  border: 3px solid #c2813d;
+  border-radius: 12px;
+  padding: 24px 28px;
+  min-width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+}
+
+.jobs-board h2 {
+  text-align: center;
+  color: #7c4a1a;
+  margin-bottom: 8px;
+  font-size: 1.3rem;
+}
+
+.jobs-board-tokens {
+  text-align: center;
+  color: #7c4a1a;
+  font-size: .9rem;
+  margin-bottom: 14px;
+}
+
+.jobs-board-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.jobs-board-card {
+  background: #fff8e7;
+  border: 2px solid #d4a854;
+  border-radius: 8px;
+  padding: 14px 16px;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jobs-board-card.disabled {
+  opacity: 0.5;
+}
+
+.quest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quest-label {
+  font-weight: 700;
+  font-size: .9rem;
+  color: #5c3a0a;
+}
+
+.quest-cost {
+  font-weight: 700;
+  font-size: .8rem;
+  color: #b45309;
+}
+
+.quest-desc {
+  font-size: .8rem;
+  color: #666;
+  line-height: 1.3;
+}
+
+.quest-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: .78rem;
+  color: #888;
+}
+
+.jobs-board-card .btn {
+  margin-top: auto;
+  font-size: .78rem;
+  text-align: center;
+}
