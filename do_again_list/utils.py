@@ -4,15 +4,25 @@ import re
 
 def parse_time_offset_ms(value: str) -> float:
     """Parse a time offset string like '1d5h30m' into milliseconds.
+    Supports y, mo, w, d, h, m, s units.
     Returns 0 if blank or invalid.
     """
     if not value or not value.strip():
         return 0
     total = 0
+    year = re.search(r"([\d\.]+)y", value)
+    month = re.search(r"([\d\.]+)mo", value)
+    week = re.search(r"([\d\.]+)w", value)
     day = re.search(r"([\d\.]+)d", value)
     hour = re.search(r"([\d\.]+)h", value)
-    minute = re.search(r"([\d\.]+)m", value)
+    minute = re.search(r"([\d\.]+)m(?!o)", value)
     sec = re.search(r"([\d\.]+)s", value)
+    if year:
+        total += float(year.group(1)) * 365 * 24 * 60 * 60 * 1000
+    if month:
+        total += float(month.group(1)) * 30 * 24 * 60 * 60 * 1000
+    if week:
+        total += float(week.group(1)) * 7 * 24 * 60 * 60 * 1000
     if day:
         total += float(day.group(1)) * 24 * 60 * 60 * 1000
     if hour:
@@ -58,7 +68,20 @@ def humanize_seconds(seconds: float) -> str:
 
 def humanize_timedelta(duration: datetime.timedelta) -> str:
     buffer = ""
-    if duration.days > 0:
-        buffer += f"{duration.days}d"
+    days = duration.days
+    if days >= 365:
+        years = days // 365
+        days -= years * 365
+        buffer += f"{years}y"
+    if days >= 30:
+        months = days // 30
+        days -= months * 30
+        buffer += f"{months}mo"
+    if days >= 7:
+        weeks = days // 7
+        days -= weeks * 7
+        buffer += f"{weeks}w"
+    if days > 0:
+        buffer += f"{days}d"
     buffer += humanize_seconds(duration.seconds)
     return buffer
