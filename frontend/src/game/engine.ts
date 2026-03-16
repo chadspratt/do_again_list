@@ -273,31 +273,32 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
   // Remove fully faded enemies
   state.enemies = state.enemies.filter(e => !e.dead || e.deathTimer > 0);
 
-  // Find closest living enemy in range
+  // Find lowest-health living enemy in attack range
   const livingEnemies = state.enemies.filter(e => !e.dead);
-  const closestEnemy = livingEnemies.length > 0
-    ? livingEnemies.reduce((a, b) => a.x < b.x ? a : b)
+  const enemiesInRange = livingEnemies.filter(e => e.x - hero.x < 80);
+  const targetEnemy = enemiesInRange.length > 0
+    ? enemiesInRange.reduce((a, b) => a.hp < b.hp ? a : b)
     : null;
 
   // Hero attacks
   hero.attackTimer -= dt;
-  if (closestEnemy && closestEnemy.x - hero.x < 80 && hero.attackTimer <= 0) {
-    const dmg = Math.max(1, hero.attack - closestEnemy.defense);
-    closestEnemy.hp -= dmg;
+  if (targetEnemy && hero.attackTimer <= 0) {
+    const dmg = Math.max(1, hero.attack - targetEnemy.defense);
+    targetEnemy.hp -= dmg;
     hero.attackTimer = hero.attackCooldown;
-    addFloatingText(state, closestEnemy.x, closestEnemy.y - 20, `-${dmg}`, '#ef4444');
+    addFloatingText(state, targetEnemy.x, targetEnemy.y - 20, `-${dmg}`, '#ef4444');
 
-    if (closestEnemy.hp <= 0) {
-      closestEnemy.dead = true;
-      closestEnemy.deathTimer = DEATH_FADE_DURATION;
-      result.goldEarned += closestEnemy.goldReward;
-      result.xpEarned += closestEnemy.xpReward;
+    if (targetEnemy.hp <= 0) {
+      targetEnemy.dead = true;
+      targetEnemy.deathTimer = DEATH_FADE_DURATION;
+      result.goldEarned += targetEnemy.goldReward;
+      result.xpEarned += targetEnemy.xpReward;
       result.questTokensEarned += 1;
       state.hero.killStreak++;
       result.killStreak = state.hero.killStreak;
-      addFloatingText(state, closestEnemy.x, closestEnemy.y - 40, `+${closestEnemy.goldReward}g`, '#eab308');
+      addFloatingText(state, targetEnemy.x, targetEnemy.y - 40, `+${targetEnemy.goldReward}g`, '#eab308');
       if (state.hero.killStreak > 1) {
-        addFloatingText(state, closestEnemy.x, closestEnemy.y - 60, `${state.hero.killStreak}x streak!`, '#f59e0b');
+        addFloatingText(state, targetEnemy.x, targetEnemy.y - 60, `${state.hero.killStreak}x streak!`, '#f59e0b');
       }
     }
   }
