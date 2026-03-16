@@ -183,16 +183,17 @@ function buffBonus(buffs: HeroBuff[], stat: 'ATTACK' | 'DEFENSE' | 'SPEED'): num
 
 export interface TickResult {
   goldEarned: number;
+  questTokensEarned: number;
   xpEarned: number;
   heroDied: boolean;
-  /** True when the run ends (hero died — no respawn). BattleLane should stop the loop. */
+  /** True when the run ends (hero died — no respawn). Lane should stop the loop. */
   runOver: boolean;
   distance: number;
   killStreak: number;
 }
 
 export function tick(state: BattleState, gs: GameState, dt: number): TickResult {
-  const result: TickResult = { goldEarned: 0, xpEarned: 0, heroDied: false, runOver: false, distance: state.distance, killStreak: state.hero.killStreak };
+  const result: TickResult = { goldEarned: 0, xpEarned: 0, questTokensEarned: 0, heroDied: false, runOver: false, distance: state.distance, killStreak: state.hero.killStreak };
   const hero = state.hero;
 
   // Update floating texts
@@ -291,6 +292,7 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       closestEnemy.deathTimer = DEATH_FADE_DURATION;
       result.goldEarned += closestEnemy.goldReward;
       result.xpEarned += closestEnemy.xpReward;
+      result.questTokensEarned += 1;
       state.hero.killStreak++;
       result.killStreak = state.hero.killStreak;
       addFloatingText(state, closestEnemy.x, closestEnemy.y - 40, `+${closestEnemy.goldReward}g`, '#eab308');

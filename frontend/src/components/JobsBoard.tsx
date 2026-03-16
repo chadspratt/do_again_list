@@ -5,13 +5,19 @@ interface JobsBoardProps {
   quests: QuestDef[];
   gameState: GameState;
   onAccept: (quest: QuestDef) => void;
+  onExit: () => void;
 }
 
-export function JobsBoard({ quests, gameState, onAccept }: JobsBoardProps) {
+export function JobsBoard({ quests, gameState, onAccept, onExit }: JobsBoardProps) {
   return (
     <div className="jobs-board-overlay">
       <div className="jobs-board">
-        <h2>📜 Jobs Board</h2>
+        <div className="jobs-board-title-row">
+          <h2>📜 Jobs Board</h2>
+          <button className="btn btn-secondary btn-sm jobs-board-exit" onClick={onExit}>
+            ✖ Leave Guild
+          </button>
+        </div>
         <p className="jobs-board-tokens">
           Quest Tokens: <strong>{gameState.quest_tokens}</strong>
         </p>

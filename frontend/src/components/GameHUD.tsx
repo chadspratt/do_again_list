@@ -4,9 +4,23 @@ interface GameHUDProps {
   gameState: GameState;
   /** Optional extra stats to show (e.g. kill streak). */
   extraStats?: React.ReactNode;
+  /** If provided, the quest-token stat becomes a button that calls this. */
+  onQuestClick?: () => void;
 }
 
-export function GameHUD({ gameState, extraStats }: GameHUDProps) {
+export function GameHUD({ gameState, extraStats, onQuestClick }: GameHUDProps) {
+  const tokenStat = onQuestClick && gameState.quest_tokens > 0
+    ? (
+        <button
+          className="stat stat-btn"
+          title="Go to the guild hall to pick a quest"
+          onClick={onQuestClick}
+        >
+          🎫 {gameState.quest_tokens} Quest {gameState.quest_tokens === 1 ? 'Token' : 'Tokens'} — Go!
+        </button>
+      )
+    : <span className="stat" title="Quest Tokens">🎫 {gameState.quest_tokens}</span>;
+
   return (
     <>
       <div className="battle-stats">
@@ -16,7 +30,7 @@ export function GameHUD({ gameState, extraStats }: GameHUDProps) {
         <span className="stat" title="Level">⭐ Lv {gameState.level}</span>
         <span className="stat" title="Gold">💰 {gameState.gold}</span>
         <span className="stat" title="Souls">👻 {gameState.souls}</span>
-        <span className="stat" title="Quest Tokens">🎫 {gameState.quest_tokens}</span>
+        {tokenStat}
         {extraStats}
       </div>
       <div className="xp-bar-container">

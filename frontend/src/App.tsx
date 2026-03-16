@@ -22,8 +22,7 @@ import { NewEventModal } from './components/NewEventModal';
 import { SettingsModal } from './components/SettingsModal';
 import { PendingPanel } from './components/PendingPanel';
 import { OneTimePanel } from './components/OneTimePanel';
-import { BattleLane, type BattleLaneHandle } from './components/BattleLane';
-import { QuestLane } from './components/QuestLane';
+import { Lane, type LaneHandle } from './components/Lane';
 import { LandingPage } from './components/LandingPage';
 import { RunOverScreen } from './components/RunOverScreen';
 import { sortEventsByDue } from './utils';
@@ -38,14 +37,13 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [sortMode, setSortMode] = useState<'recent' | 'due'>('due');
   const [useCodeNames, setUseCodeNames] = useState(false);
-  const battleLaneRef = useRef<BattleLaneHandle>(null);
+  const laneRef = useRef<LaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   // Prestige / run-over state
   const [runOverData, setRunOverData] = useState<{ soulsEarned: number } | null>(null);
-  const [runKey, setRunKey] = useState(0);  // increment to force BattleLane remount
+  const [runKey, setRunKey] = useState(0);  // increment to force Lane remount
   // Quest state
   const [questActive, setQuestActive] = useState(false);
-  const [questKey, setQuestKey] = useState(0);
   const prevTokensRef = useRef<number | null>(null);
 
   // One-time (repeats === false) takes priority over pending for panel assignment
@@ -110,7 +108,7 @@ export default function App() {
     if (data.messages && data.messages.length > 0) {
       console.log('🎮 Game:', data.messages.join(' | '));
     }
-    const lane = battleLaneRef.current;
+    const lane = laneRef.current;
     if (lane) {
       // Spawn enemy if present
       if (data.spawn_enemy) {
@@ -149,7 +147,7 @@ export default function App() {
 
   const handleUpdate = useCallback(
     async (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => {
-      const killStreak = battleLaneRef.current?.getKillStreak() ?? 0;
+      const killStreak = laneRef.current?.getKillStreak() ?? 0;
       const result = await updateEvent(eventId, action, startDatetime, endDatetime, nextTime, killStreak);
       if (result.success) {
         await loadEvents();
@@ -208,7 +206,7 @@ export default function App() {
   const handleStartNewRun = useCallback(() => {
     setRunOverData(null);
     setRunKey(k => k + 1);
-    // Reload game state so BattleLane initializes with permanent bonuses
+    // Reload game state to reload permanent bonuses
     loadGameState();
   }, [loadGameState]);
 
@@ -220,7 +218,6 @@ export default function App() {
     // Transition when tokens are > 0 on first load (prev===null) OR when they go from 0 → positive
     if ((prev === null || prev === 0) && gameState.quest_tokens > 0 && !questActive && !runOverData) {
       setQuestActive(true);
-      setQuestKey(k => k + 1);
     }
   }, [gameState, questActive, runOverData]);
 
@@ -240,13 +237,6 @@ export default function App() {
     setGameState(gs);
     setRunOverData({ soulsEarned });
   }, []);
-
-  const handleEnterQuest = useCallback(() => {
-    if (gameState && gameState.quest_tokens > 0) {
-      setQuestActive(true);
-      setQuestKey(k => k + 1);
-    }
-  }, [gameState]);
 
   const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
     const res = await authLogin(username, password);
@@ -300,22 +290,17 @@ export default function App() {
         onRegister={handleRegister}
         onLogout={handleLogout}
       />
-      {gameState && !questActive && (
-        <BattleLane
+      {gameState && (
+        <Lane
           key={runKey}
-          ref={battleLaneRef}
+          ref={laneRef}
           gameState={gameState}
           onGameStateUpdate={handleGameStateUpdate}
           onRunOver={handleRunOver}
-        />
-      )}
-      {gameState && questActive && (
-        <QuestLane
-          key={questKey}
-          gameState={gameState}
-          onGameStateUpdate={handleGameStateUpdate}
+          questActive={questActive}
           onQuestComplete={handleQuestComplete}
           onQuestFailed={handleQuestFailed}
+          onExitQuest={() => setQuestActive(false)}
         />
       )}
       {runOverData && gameState && (
@@ -330,11 +315,6 @@ export default function App() {
         <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
           + Add Event
         </button>
-        {gameState && gameState.quest_tokens > 0 && !questActive && !runOverData && (
-          <button className="btn btn-success" onClick={handleEnterQuest}>
-            🎫 Quest ({gameState.quest_tokens})
-          </button>
-        )}
         <button
           className={`btn ${sortMode === 'due' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setSortMode(m => m === 'recent' ? 'due' : 'recent')}

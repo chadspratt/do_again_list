@@ -61,11 +61,13 @@ export interface QuestHero {
 }
 
 export type QuestPhase =
+  | 'camera_swing'      // intro: camera pivots around the hero to the right to reveal the guild appearing from the left
   | 'walk_to_guild'     // hero walks right toward guild
   | 'at_guild'          // hero arrived, show Jobs Board (handled by React overlay)
   | 'quest_active'      // quest gameplay – enemies + boxes
   | 'return_to_guild'   // all boxes collected, hero walks back
-  | 'quest_complete';   // hero arrived back at guild
+  | 'quest_complete'    // hero arrived back at guild
+  | 'leaving_guild';    // hero walks away from guild (guild scrolls off-screen left)
 
 export interface QuestDef {
   label: string;
@@ -91,12 +93,16 @@ export interface QuestState {
   questLabel: string;
   goldEarned: number;
   xpEarned: number;
+  /** 0→1 progress of the opening camera-swing intro animation */
+  swingProgress: number;
 }
 
 // ── Constants ──
 
-const HERO_X = 80;
-const GUILD_DISTANCE = 600;           // how far the hero walks to reach the guild
+export const QUEST_HERO_X = 80;
+export const GUILD_DISTANCE = 600;    // how far the hero walks to reach the guild
+const HERO_X = QUEST_HERO_X;
+const SWING_DURATION = 1.5;           // seconds for the opening camera-swing
 const FLOAT_TEXT_DURATION = 1.2;
 const DEATH_FADE = 0.5;
 const BOX_FADE = 0.4;
@@ -106,10 +112,11 @@ const BOX_CHANCE = 0.55;              // chance a spawn is a box vs enemy
 
 // ── Initialisation ──
 
-export function createQuestState(gs: GameState): QuestState {
+export function createQuestState(gs: GameState, startDistance = 0): QuestState {
   const maxHp = gs.max_hp ?? (100 + gs.level * 10);
   return {
-    phase: 'walk_to_guild',
+    phase: 'camera_swing',
+    swingProgress: 0,
     hero: {
       x: HERO_X,
       y: GROUND_Y,
@@ -127,8 +134,8 @@ export function createQuestState(gs: GameState): QuestState {
     enemies: [],
     boxes: [],
     floatingTexts: [],
-    distance: 0,
-    guildX: GUILD_DISTANCE,
+    distance: startDistance,
+    guildX: startDistance + GUILD_DISTANCE,
     boxesCollected: 0,
     boxesRequired: 0,
     enemyLevel: 1,
@@ -235,6 +242,8 @@ export interface QuestTickResult {
   questComplete: boolean;
   /** True when the hero dies during a quest. */
   heroDied: boolean;
+  /** True when the hero has walked far enough from the guild that it's off-screen. */
+  leftGuild: boolean;
   /** Gold earned this tick. */
   goldEarned: number;
   /** XP earned this tick. */
@@ -246,6 +255,7 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
     arrivedAtGuild: false,
     questComplete: false,
     heroDied: false,
+    leftGuild: false,
     goldEarned: 0,
     xpEarned: 0,
   };
@@ -267,6 +277,15 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
   if (expectedMaxHp > hero.maxHp) {
     hero.hp += expectedMaxHp - hero.maxHp;
     hero.maxHp = expectedMaxHp;
+  }
+
+  // ── Phase: camera_swing ──
+  if (state.phase === 'camera_swing') {
+    state.swingProgress = Math.min(1, state.swingProgress + dt / SWING_DURATION);
+    if (state.swingProgress >= 1) {
+      state.phase = 'walk_to_guild';
+    }
+    return result;
   }
 
   // ── Phase: walk_to_guild ──
@@ -406,5 +425,25 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
     return result;
   }
 
+  // ── Phase: leaving_guild ──
+  if (state.phase === 'leaving_guild') {
+    state.distance += hero.speed * dt;
+    // Guild screen position = HERO_X + (guildX - distance)
+    // When that goes below -200 the guild is well off-screen left.
+    const guildScreenX = 80 + (state.guildX - state.distance);
+    if (guildScreenX < -200) {
+      result.leftGuild = true;
+    }
+    return result;
+  }
+
   return result;
+}
+
+/** Transition into the leaving_guild phase (hero walks away from the guild). */
+export function beginLeavingGuild(state: QuestState): void {
+  state.phase = 'leaving_guild';
+  // Clear any quest entities so the walk-away scene is clean
+  state.enemies = [];
+  state.boxes = [];
 }

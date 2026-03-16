@@ -256,10 +256,12 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         xp = max(0, int(request.data.get("xp", 0))) # type: ignore
         streak = max(0, int(request.data.get("streak", 0))) # type: ignore
         hero_hp = int(request.data.get("hero_hp", -1)) # type: ignore
+        quest_tokens = max(0, int(request.data.get("quest_tokens", 0))) # type: ignore
         game_state.gold += gold
         game_state.streak = streak
         game_state.hero_hp = hero_hp
         game_state.add_xp(xp)
+        game_state.quest_tokens += quest_tokens
         game_state.save()
         return Response(serializers.GameStateSerializer(game_state).data)
 

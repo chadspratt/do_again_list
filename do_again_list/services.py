@@ -247,8 +247,7 @@ class ActivityService:
         game_effect.spawn_enemy = SpawnEnemy(
             level=(kill_streak // 3) + 1, stat_modifier=stat_modifier.times(-1)
         )
-        # Award a quest token for completing an activity
-        game_effect.game_state_delta.quest_tokens += 1
+        # Quest token is awarded when the spawned enemy is killed (handled client-side)
         return game_effect
 
     def set_next(
