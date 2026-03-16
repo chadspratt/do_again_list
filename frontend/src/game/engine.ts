@@ -1,4 +1,5 @@
 import type { GameState } from '../types';
+import { pickAttackTarget } from './combatUtils';
 
 // ── Entity types ──
 
@@ -275,10 +276,7 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
 
   // Find lowest-health living enemy in attack range
   const livingEnemies = state.enemies.filter(e => !e.dead);
-  const enemiesInRange = livingEnemies.filter(e => e.x - hero.x < 80);
-  const targetEnemy = enemiesInRange.length > 0
-    ? enemiesInRange.reduce((a, b) => a.hp < b.hp ? a : b)
-    : null;
+  const targetEnemy = pickAttackTarget(state.enemies, hero.x);
 
   // Hero attacks
   hero.attackTimer -= dt;

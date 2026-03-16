@@ -14,6 +14,7 @@ import {
   GROUND_Y,
   type FloatingText,
 } from './engine';
+import { pickAttackTarget } from './combatUtils';
 
 // ── Types ──
 
@@ -361,28 +362,26 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
       }
     }
 
-    // Hero attacks closest enemy
+    // Hero attacks lowest-health enemy in range
     const living = state.enemies.filter(e => !e.dead);
-    const closest = living.length > 0
-      ? living.reduce((a, b) => a.x < b.x ? a : b)
-      : null;
+    const targetEnemy = pickAttackTarget(state.enemies, hero.x);
 
     hero.attackTimer -= dt;
-    if (closest && closest.x - hero.x < 80 && hero.attackTimer <= 0) {
-      const dmg = Math.max(1, hero.attack - closest.defense);
-      closest.hp -= dmg;
+    if (targetEnemy && hero.attackTimer <= 0) {
+      const dmg = Math.max(1, hero.attack - targetEnemy.defense);
+      targetEnemy.hp -= dmg;
       hero.attackTimer = hero.attackCooldown;
-      addFloat(state, closest.x, closest.y - 20, `-${dmg}`, '#ef4444');
-      if (closest.hp <= 0) {
-        closest.dead = true;
-        closest.deathTimer = DEATH_FADE;
-        const goldR = 3 + closest.level * 2;
-        const xpR = 10 + closest.level * 5;
+      addFloat(state, targetEnemy.x, targetEnemy.y - 20, `-${dmg}`, '#ef4444');
+      if (targetEnemy.hp <= 0) {
+        targetEnemy.dead = true;
+        targetEnemy.deathTimer = DEATH_FADE;
+        const goldR = 3 + targetEnemy.level * 2;
+        const xpR = 10 + targetEnemy.level * 5;
         state.goldEarned += goldR;
         state.xpEarned += xpR;
         result.goldEarned += goldR;
         result.xpEarned += xpR;
-        addFloat(state, closest.x, closest.y - 40, `+${goldR}g`, '#eab308');
+        addFloat(state, targetEnemy.x, targetEnemy.y - 40, `+${goldR}g`, '#eab308');
       }
     }
 

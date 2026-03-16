@@ -176,11 +176,45 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: DrawableEnemy) {
   ctx.font = '9px monospace';
   ctx.fillText(`L${enemy.level}`, x - 8, y - 14);
 
-  // HP bar
-  drawHpBar(ctx, x, y - 24, 28, enemy.hp, enemy.maxHp, '#ef4444');
-
   if (enemy.dead) {
     ctx.globalAlpha = 1;
+  }
+}
+
+/**
+ * Draw HP bars for all living enemies, stacking bars vertically when enemies
+ * are within 10px of each other. Bars are sorted lowest HP on top.
+ */
+function drawStackedEnemyHpBars(ctx: CanvasRenderingContext2D, enemies: DrawableEnemy[]) {
+  const living = enemies.filter(e => !e.dead);
+  if (living.length === 0) return;
+
+  // Sort by x, then group consecutive enemies within 10px of each other
+  const sorted = [...living].sort((a, b) => a.x - b.x);
+  const groups: DrawableEnemy[][] = [];
+  let current: DrawableEnemy[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].x - sorted[i - 1].x <= 10) {
+      current.push(sorted[i]);
+    } else {
+      groups.push(current);
+      current = [sorted[i]];
+    }
+  }
+  groups.push(current);
+
+  const BAR_SPACING = 8;
+  for (const group of groups) {
+    // Sort ascending by HP – lowest HP rendered topmost
+    group.sort((a, b) => a.hp - b.hp);
+    const avgX = group.reduce((sum, e) => sum + e.x, 0) / group.length;
+    const baseY = GROUND_Y - group[0].height - 24;
+    const N = group.length;
+    for (let i = 0; i < N; i++) {
+      // i=0 (lowest HP) → top of stack; i=N-1 (highest HP) → baseY
+      const barY = baseY - (N - 1 - i) * BAR_SPACING;
+      drawHpBar(ctx, avgX, barY, 28, group[i].hp, group[i].maxHp, '#ef4444');
+    }
   }
 }
 
@@ -224,6 +258,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, state: BattleState) {
   for (const enemy of state.enemies) {
     drawEnemy(ctx, enemy);
   }
+  drawStackedEnemyHpBars(ctx, state.enemies);
 
   drawHero(ctx, state.hero, true);
 
@@ -274,6 +309,7 @@ export function renderQuestFrame(ctx: CanvasRenderingContext2D, state: QuestStat
   for (const enemy of state.enemies) {
     drawEnemy(ctx, enemy);
   }
+  drawStackedEnemyHpBars(ctx, state.enemies);
 
   // Hero faces left only when returning to guild; faces right otherwise
   const facingRight = state.phase !== 'return_to_guild';
