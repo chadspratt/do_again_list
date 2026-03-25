@@ -221,14 +221,11 @@ export default function App() {
     }
   }, [gameState, questActive, runOverData]);
 
-  const handleQuestComplete = useCallback((goldEarned: number, xpEarned: number) => {
+  const handleQuestComplete = useCallback((goldEarned: number, xpEarned: number, heroHp: number) => {
     setQuestActive(false);
-    // Sync any remaining rewards
-    if (goldEarned > 0 || xpEarned > 0) {
-      syncBattleState(goldEarned, xpEarned, 0, -1)
-        .then(gs => setGameState(gs))
-        .catch(err => console.error('Quest complete sync failed:', err));
-    }
+    syncBattleState(goldEarned, xpEarned, 0, heroHp > 0 ? heroHp : -1)
+      .then(gs => setGameState(gs))
+      .catch(err => console.error('Quest complete sync failed:', err));
     loadGameState();
   }, [loadGameState]);
 

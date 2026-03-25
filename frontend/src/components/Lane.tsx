@@ -55,7 +55,7 @@ interface LaneProps {
   /** Whether the app wants quest mode active. */
   questActive: boolean;
   /** Called when the quest walk-away finishes successfully. */
-  onQuestComplete: (goldEarned: number, xpEarned: number) => void;
+  onQuestComplete: (goldEarned: number, xpEarned: number, heroHp: number) => void;
   /** Called when the hero dies during a quest. */
   onQuestFailed: (soulsEarned: number, gs: GameState) => void;
   /** Called when the player leaves the guild / exits quest voluntarily. */
@@ -363,10 +363,11 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
         // Quest complete — hero returned to guild, now walk away
         if (result.questComplete) {
           const gold = qs.goldEarned;
-          const xp = qs.xpEarned;
+          const xp = qs.xpEarned + result.completionXp;
+          const heroHp = result.heroHpAfterHeal;
           leaveCallbackRef.current = () => {
             returnToBattle();
-            onQuestComplete(gold, xp);
+            onQuestComplete(gold, xp, heroHp);
           };
           setTimeout(() => {
             beginLeavingGuild(qs);

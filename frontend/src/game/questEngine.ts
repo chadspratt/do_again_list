@@ -76,6 +76,7 @@ export interface QuestDef {
   boxesRequired: number;
   enemyLevel: number;
   cost: number;          // quest-token cost
+  difficulty: number;    // 1 / 2 / 3
 }
 
 export interface QuestState {
@@ -91,6 +92,9 @@ export interface QuestState {
   enemyLevel: number;
   idCounter: number;
   spawnTimer: number;
+  /** Pre-shuffled sequence of items to spawn ('enemy' | 'box'). */
+  spawnQueue: ('enemy' | 'box')[];
+  questDifficulty: number;   // 1 / 2 / 3
   questLabel: string;
   goldEarned: number;
   xpEarned: number;
@@ -109,7 +113,6 @@ const DEATH_FADE = 0.5;
 const BOX_FADE = 0.4;
 const SPAWN_INTERVAL_MIN = 1.5;
 const SPAWN_INTERVAL_MAX = 3.5;
-const BOX_CHANCE = 0.55;              // chance a spawn is a box vs enemy
 
 // ── Initialisation ──
 
@@ -142,6 +145,8 @@ export function createQuestState(gs: GameState, startDistance = 0): QuestState {
     enemyLevel: 1,
     idCounter: 0,
     spawnTimer: 2,
+    spawnQueue: [],
+    questDifficulty: 1,
     questLabel: '',
     goldEarned: 0,
     xpEarned: 0,
@@ -158,6 +163,7 @@ export function generateQuests(gs: GameState): QuestDef[] {
       boxesRequired: 3,
       enemyLevel: Math.max(1, baseLevel - 1),
       cost: 1,
+      difficulty: 1,
     },
     {
       label: 'Lost Cargo (Medium)',
@@ -165,6 +171,7 @@ export function generateQuests(gs: GameState): QuestDef[] {
       boxesRequired: 5,
       enemyLevel: baseLevel,
       cost: 2,
+      difficulty: 2,
     },
     {
       label: 'Lost Cargo (Hard)',
@@ -172,8 +179,22 @@ export function generateQuests(gs: GameState): QuestDef[] {
       boxesRequired: 8,
       enemyLevel: baseLevel + 2,
       cost: 3,
+      difficulty: 3,
     },
   ];
+}
+
+/** Build a shuffled spawn sequence with exactly `difficulty` enemies and `boxCount` boxes. */
+function buildSpawnQueue(difficulty: number, boxCount: number): ('enemy' | 'box')[] {
+  const queue: ('enemy' | 'box')[] = [];
+  for (let i = 0; i < difficulty; i++) queue.push('enemy');
+  for (let i = 0; i < boxCount; i++) queue.push('box');
+  // Fisher-Yates shuffle
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+  }
+  return queue;
 }
 
 /** Start a quest after the player picks one from the board. */
@@ -182,12 +203,14 @@ export function startQuest(state: QuestState, quest: QuestDef): void {
   state.boxesRequired = quest.boxesRequired;
   state.boxesCollected = 0;
   state.enemyLevel = quest.enemyLevel;
+  state.questDifficulty = quest.difficulty;
   state.questLabel = quest.label;
   state.enemies = [];
   state.boxes = [];
   state.spawnTimer = 3;
   state.goldEarned = 0;
   state.xpEarned = 0;
+  state.spawnQueue = buildSpawnQueue(quest.difficulty, quest.boxesRequired);
 }
 
 // ── Helpers ──
@@ -249,6 +272,10 @@ export interface QuestTickResult {
   goldEarned: number;
   /** XP earned this tick. */
   xpEarned: number;
+  /** Bonus XP awarded on quest completion (50/150/300 for difficulty 1/2/3). */
+  completionXp: number;
+  /** Hero HP after the 25% completion heal (only valid when questComplete is true). */
+  heroHpAfterHeal: number;
 }
 
 export function questTick(state: QuestState, gs: GameState, dt: number): QuestTickResult {
@@ -259,6 +286,8 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
     leftGuild: false,
     goldEarned: 0,
     xpEarned: 0,
+    completionXp: 0,
+    heroHpAfterHeal: 0,
   };
   const hero = state.hero;
 
@@ -317,16 +346,16 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
 
     // Spawn timer
     state.spawnTimer -= dt;
-    if (state.spawnTimer <= 0) {
-      const remaining = state.boxesRequired - state.boxesCollected - state.boxes.filter(b => !b.collected).length;
-      if (remaining > 0) {
-        if (Math.random() < BOX_CHANCE) {
-            spawnBox(state);
-        } else {
-            spawnEnemy(state);
-        }
+    if (state.spawnTimer <= 0 && state.spawnQueue.length > 0) {
+      const next = state.spawnQueue.shift()!;
+      if (next === 'box') {
+        spawnBox(state);
+      } else {
+        spawnEnemy(state);
       }
-      state.spawnTimer = SPAWN_INTERVAL_MIN + Math.random() * (SPAWN_INTERVAL_MAX - SPAWN_INTERVAL_MIN);
+      if (state.spawnQueue.length > 0) {
+        state.spawnTimer = SPAWN_INTERVAL_MIN + Math.random() * (SPAWN_INTERVAL_MAX - SPAWN_INTERVAL_MIN);
+      }
     }
 
     // Move hero forward if no enemy close
@@ -420,6 +449,15 @@ export function questTick(state: QuestState, gs: GameState, dt: number): QuestTi
       state.distance = state.guildX;
       state.phase = 'quest_complete';
       result.questComplete = true;
+      // 25% heal on completion
+      const healAmount = Math.floor(hero.maxHp * (0.15 + 0.1 * state.questDifficulty));
+      hero.hp = Math.min(hero.maxHp, hero.hp + healAmount);
+      result.heroHpAfterHeal = hero.hp;
+      // Bonus XP: 50 / 150 / 300 for difficulty 1 / 2 / 3
+      const COMPLETION_XP = [50, 150, 300];
+      result.completionXp = COMPLETION_XP[Math.min(2, state.questDifficulty - 1)];
+      addFloat(state, hero.x, hero.y - 50, `+${healAmount} HP`, '#22c55e');
+      addFloat(state, hero.x, hero.y - 70, `+${result.completionXp} XP`, '#a78bfa');
     }
     return result;
   }
