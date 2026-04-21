@@ -15,7 +15,7 @@ EMAIL="${CERTBOT_EMAIL:?Set CERTBOT_EMAIL environment variable (e.g. export CERT
 
 echo "=== Installing Docker ==="
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl
+sudo apt-get install -y ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -23,6 +23,16 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 sudo usermod -aG docker "$USER"
+
+# Group membership only takes effect in a new session. Check now and bail if needed.
+if ! docker info &>/dev/null; then
+    echo ""
+    echo ">>> Docker installed. You must log out and back in for group permissions to apply."
+    echo ">>> Run: exit"
+    echo ">>> Then reconnect and re-run: bash deploy/setup.sh"
+    echo ""
+    exit 1
+fi
 
 echo "=== Creating .env file ==="
 if [ ! -f .env ]; then
@@ -35,11 +45,14 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-echo "=== Building frontend ==="
-# If node/npm aren't installed, skip — assumes static assets are pre-built
-if command -v npm &> /dev/null; then
-    (cd frontend && npm ci && npm run build)
+echo "=== Installing Node.js ==="
+if ! command -v npm &> /dev/null; then
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
 fi
+
+echo "=== Building frontend ==="
+(cd frontend && npm ci && npm run build)
 
 echo "=== Phase 1: Start with HTTP-only nginx to get SSL cert ==="
 # Use the initial (no-SSL) nginx config

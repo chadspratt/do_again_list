@@ -16,12 +16,11 @@ COPY do_again_list/ do_again_list/
 COPY test_project/ test_project/
 RUN pip install --no-cache-dir . gunicorn psycopg[binary] whitenoise
 
-# Copy pre-built frontend static assets (build frontend before docker build)
-COPY static/ static/
-
-# Collect static files
-RUN python test_project/manage.py collectstatic --noinput
+# static assets from the vite build are already inside do_again_list/static/
+# collectstatic runs at container startup (needs env vars available then)
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["gunicorn", "test_project.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+CMD ["./entrypoint.sh"]
