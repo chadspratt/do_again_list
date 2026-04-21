@@ -11,7 +11,7 @@ interface HeaderProps {
 export function Header({ user, onLogin, onRegister, onLogout }: HeaderProps) {
   return (
     <div className="header">
-      <h1>⏱️ Do Again List</h1>
+      <h1>⏱️ IncrementalList</h1>
       <AuthControls user={user} onLogin={onLogin} onRegister={onRegister} onLogout={onLogout} />
     </div>
   );

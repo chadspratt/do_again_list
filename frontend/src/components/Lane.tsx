@@ -362,12 +362,14 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
 
         // Quest complete — hero returned to guild, now walk away
         if (result.questComplete) {
-          const gold = qs.goldEarned;
-          const xp = qs.xpEarned + result.completionXp;
           const heroHp = result.heroHpAfterHeal;
+          // Sync completion XP + heal immediately so level-ups apply right away
+          syncBattleState(0, result.completionXp, 0, heroHp)
+            .then((gs) => onGameStateUpdate(gs))
+            .catch((err) => console.error('Quest completion sync failed:', err));
           leaveCallbackRef.current = () => {
             returnToBattle();
-            onQuestComplete(gold, xp, heroHp);
+            onQuestComplete(0, 0, heroHp);
           };
           setTimeout(() => {
             beginLeavingGuild(qs);

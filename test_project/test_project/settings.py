@@ -142,7 +142,7 @@ REST_FRAMEWORK = {
 
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Do Again List API",
+    "TITLE": "IncrementalList API",
     "DESCRIPTION": "",
     "VERSION": "0.0.1",
     "SERVE_INCLUDE_SCHEMA": False,

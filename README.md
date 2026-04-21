@@ -1,4 +1,4 @@
-Do Again List - An un-todo list for tracking the last time you did things that you want to do more/less frequently/regularly
+IncrementalList - An un-todo list for tracking the last time you did things that you want to do more/less frequently/regularly
 
 Sorts events from most recent to least. Avoid doing things that you wish you did less but did recently and find something you wish you did more and haven't done for while.
 
@@ -76,49 +76,3 @@ do-again-list = { path = "./do-again-list", editable = true }
 
 Recommendations for `my-integrated-project/Dockerfile` are available upon request.
 
-
-## Recommendations
-
-### Easy
-- [x] Make `PastEvent` model singular (e.g. `PastEvent`)
-- [x] remove explicit definition of `id` fields in models (django always provides an `id` column with sensible defaults)
-- [x] remove explicit definition of `db_table`
-- switch to service architecture for mutating models (`models.GameState` -> `services.GameStateService.add_xp(game_state, amount)`)
-- switch to using standard library date parsing (rather than having shadow `dateutil` dependency)
-- Defer user registration/auth to project (not app level concern)
-- [x] remove unused `do_again_list/templates/do_again_list/dashboard.html`
-- [x] rework API to be more restful:
-  - paths: `/api/<module>/<resource>/<id>/<action>`. First token should be set by project.
-  - correctly use HTTP verbs (GET, PATCH, POST, DELETE) rather than mangling GET endpoints with actions like `update`
-- [ ] Switch any model field representing a duration to use the built-in `models.DurationField`
-- Create dedicated model for `items`
-
-### Medium
-
-#### Model Naming Friction
-There is naming friction between `PastEvent` and `HistoricalEvent`; historical events usually being in the past (and vice-versa) and all. `PastEvent` isn't really even (quite) a past event, given that it has a predicted future time. This could just be `Event` (or maybe there is an even more descriptive name for this fundamental resource).
-
-Looking a bit more I think I understand the structure:
-- `PastEvent` holds all the detail about what the thing you're doing _is_. Name, typical duration, time between, value, all that stuff. It also holds an _actual time_ when this occurred.
-- `HistoricalEvent` references a `PastEvent` and gives an _actual time_ when this `PastEvent` occurred.
-
-**PROPOSE**:
-- [x] Phase 1:
-  - Rename `PastEvent` to `Activity`
-  - Rename `HistoricalEvent` to `Occurance`, or (more dryly) `ActivityInstance`
-- [x] Phase 2:
-  - Remove the specification of the _actual time_ from `Activity`
-  - Rework service code to create a `Occurance` for any _actual time_ logging (even for the first occurance of the activity).
-  - __This proposition adheres to typical database table normalization practices (1NF).__
-- [x] Phase 3:
-  - Remove `next_time` from `Activity`
-  - Add `next_time` to `Occurance` to indicate when a occurance _ought_ to occur.
-  - Retool service code to create a _future_ `occurance` setting the `next_time`.
-  - Retool service code to update the `occurance` with actual start and end time when the user does the `activity`.
-
-
-### Harder
-- [x] Decouple service and view (e.g. `views.api_update_event` needs to be at least two layers: view and controller)
-- [x] Adopt more formal API patterns using [Django Rest Framework](https://www.django-rest-framework.org/)
-  - Easier serialization (avoids much boilerplate like `views.api_update_event_settings`)
-  - Standard viewsets reduce boilerplate, ensure standard behavior

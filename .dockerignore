@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.ruff_cache/
+*.egg-info/
+dist/
+node_modules/
+frontend/node_modules/
+.tox/
+*.sqlite3
+.env

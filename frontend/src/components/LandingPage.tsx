@@ -13,7 +13,7 @@ export function LandingPage({ user, onLogin, onRegister, onLogout }: LandingPage
     <div className="landing">
       {/* Hero Section */}
       <section className="landing-hero">
-        <h1 className="landing-logo">⏱️ Do Again List</h1>
+        <h1 className="landing-logo">⏱️ IncrementalList</h1>
         <p className="landing-tagline">
           Track the things you want to do more, or less, without
           stressing over perfect data.

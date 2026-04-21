@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#
+# EC2 first-time setup script.
+# Run on a fresh Ubuntu 24.04 EC2 instance.
+#
+# Usage:
+#   1. scp this repo to the instance (or git clone)
+#   2. ssh into the instance
+#   3. bash deploy/setup.sh
+#
+set -euo pipefail
+
+DOMAIN="incrementallist.com"
+EMAIL="${CERTBOT_EMAIL:?Set CERTBOT_EMAIL environment variable (e.g. export CERTBOT_EMAIL=you@example.com)}"
+
+echo "=== Installing Docker ==="
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo usermod -aG docker "$USER"
+
+echo "=== Creating .env file ==="
+if [ ! -f .env ]; then
+    cp .env.example .env
+    # Generate a random secret key
+    RANDOM_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
+    sed -i "s|change-me-to-a-long-random-string|$RANDOM_KEY|" .env
+    echo ">>> IMPORTANT: Edit .env and set a strong DB_PASSWORD before continuing!"
+    echo ">>> Run: nano .env"
+    exit 1
+fi
+
+echo "=== Building frontend ==="
+# If node/npm aren't installed, skip — assumes static assets are pre-built
+if command -v npm &> /dev/null; then
+    (cd frontend && npm ci && npm run build)
+fi
+
+echo "=== Phase 1: Start with HTTP-only nginx to get SSL cert ==="
+# Use the initial (no-SSL) nginx config
+cp nginx/nginx-initial.conf nginx/active.conf
+
+# Temporarily point docker-compose nginx volume to active.conf
+docker compose up -d db app
+docker compose run --rm nginx sh -c "echo 'waiting for app...'"
+# Start nginx with HTTP-only config
+docker compose up -d nginx
+
+echo "=== Obtaining SSL certificate ==="
+docker compose run --rm certbot certonly \
+    --webroot \
+    --webroot-path=/var/www/certbot \
+    --email "$EMAIL" \
+    --agree-tos \
+    --no-eff-email \
+    -d "$DOMAIN" \
+    -d "www.$DOMAIN"
+
+echo "=== Phase 2: Switch to full SSL nginx config ==="
+# The main nginx.conf already has the SSL server block
+docker compose restart nginx
+
+echo "=== Running database migrations ==="
+docker compose exec app python test_project/manage.py migrate
+
+echo "=== Creating superuser ==="
+echo "Create a Django admin superuser:"
+docker compose exec -it app python test_project/manage.py createsuperuser
+
+echo ""
+echo "=== Done! ==="
+echo "Your site should be live at https://$DOMAIN"
+echo ""
+echo "Useful commands:"
+echo "  docker compose logs -f          # View logs"
+echo "  docker compose exec app python test_project/manage.py migrate   # Run migrations"
+echo "  docker compose down             # Stop everything"
+echo "  docker compose up -d            # Start everything"

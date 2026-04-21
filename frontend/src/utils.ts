@@ -328,15 +328,15 @@ export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEve
         return [5, endMs + maxTimeMs];
       }
       if (minTimeMs > 0 && sinceEnd >= minTimeMs) {
-        // Least time since end first
-        return [6, endMs];
+        // Sort by ready date (end + min time between) — earliest ready first
+        return [5, endMs + minTimeMs];
       }
       if (minTimeMs > 0 && sinceEnd < minTimeMs) {
         // Least time until min first
         return [7, endMs + minTimeMs];
       }
       // No active timer: oldest end_time first
-      return [6, endMs];
+      return [5, endMs];
     }
   }
 
