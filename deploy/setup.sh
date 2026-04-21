@@ -55,14 +55,10 @@ echo "=== Building frontend ==="
 (cd frontend && npm ci && npm run build)
 
 echo "=== Phase 1: Start with HTTP-only nginx to get SSL cert ==="
-# Use the initial (no-SSL) nginx config
+# Activate the HTTP-only nginx config (no SSL certs needed yet)
 cp nginx/nginx-initial.conf nginx/active.conf
 
-# Temporarily point docker-compose nginx volume to active.conf
-docker compose up -d db app
-docker compose run --rm nginx sh -c "echo 'waiting for app...'"
-# Start nginx with HTTP-only config
-docker compose up -d nginx
+docker compose up -d db app nginx
 
 echo "=== Obtaining SSL certificate ==="
 docker compose run --rm certbot certonly \
@@ -75,8 +71,8 @@ docker compose run --rm certbot certonly \
     -d "www.$DOMAIN"
 
 echo "=== Phase 2: Switch to full SSL nginx config ==="
-# The main nginx.conf already has the SSL server block
-docker compose restart nginx
+cp nginx/nginx.conf nginx/active.conf
+docker compose exec nginx nginx -s reload
 
 echo "=== Running database migrations ==="
 docker compose exec app python test_project/manage.py migrate
