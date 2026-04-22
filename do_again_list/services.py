@@ -365,7 +365,7 @@ class DataImportExportService:
             }
             for field_name in duration_fields:
                 val = getattr(activity, field_name)
-                activity_dict[field_name] = humanize_timedelta(val) if val else None
+                activity_dict[field_name] = humanize_timedelta(val) if val is not None else None
             activity_data.append(activity_dict)
 
         return {

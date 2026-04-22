@@ -202,6 +202,10 @@ class OccuranceImportSerializer(serializers.Serializer):
 
 
 class ActivityImportSerializer(serializers.Serializer):
+    def validate_default_duration(self, value):
+        # default_duration is non-nullable on the model; treat null as zero duration
+        return value if value is not None else datetime.timedelta(0)
+
     title = serializers.CharField(max_length=255)
     display_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     code_name = serializers.CharField(max_length=255, allow_null=True, required=False, default=None)

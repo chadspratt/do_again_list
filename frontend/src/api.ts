@@ -175,8 +175,16 @@ export async function exportData(): Promise<object> {
 export async function importData(data: object): Promise<DataImportResult> {
   const res = await apiRequest(`${API_BASE}/data/import/`, 'POST', data);
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(JSON.stringify(err));
+    const text = await res.text();
+    let message: string;
+    try {
+      const err = JSON.parse(text);
+      message = JSON.stringify(err);
+    } catch {
+      // Server returned non-JSON (e.g. HTML error page)
+      message = `HTTP ${res.status} — ${res.statusText}. Check server logs for details.`;
+    }
+    throw new Error(message);
   }
   return res.json();
 }
