@@ -35,11 +35,27 @@ export async function fetchEvents(): Promise<DoAgainEvent[]> {
   return res.json();
 }
 
-export async function createEvent(title: string, _date: string, _pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
+export async function createEvent(title: string, date: string, pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
   const res = await apiRequest(`${API_BASE}/activities/`, 'POST', { title, repeats });
-  if (res.ok) return res.json();
-  const data = await res.json();
-  return { success: false, error: data.detail || JSON.stringify(data) };
+  if (!res.ok) {
+    const data = await res.json();
+    return { success: false, error: data.detail || JSON.stringify(data) };
+  }
+  const result: ApiResponse = await res.json();
+
+  // If not pending and a date was provided, immediately mark it as completed
+  if (!pending && date && result.resource_ref) {
+    const endRes = await apiRequest(
+      `${API_BASE}/activities/${result.resource_ref.pk}/end/`,
+      'POST',
+      { end_time: date, kill_streak: 0 },
+    );
+    if (endRes.ok) return endRes.json();
+    const data = await endRes.json();
+    return { success: false, error: data.error || data.detail || JSON.stringify(data) };
+  }
+
+  return result;
 }
 
 export async function updateEvent(
