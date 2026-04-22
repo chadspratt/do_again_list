@@ -72,7 +72,7 @@ docker compose run --rm certbot certonly \
 
 echo "=== Phase 2: Switch to full SSL nginx config ==="
 cp nginx/nginx.conf nginx/active.conf
-docker compose exec nginx nginx -s reload
+docker compose up -d --force-recreate nginx
 
 echo "=== Running database migrations ==="
 docker compose exec app python test_project/manage.py migrate
