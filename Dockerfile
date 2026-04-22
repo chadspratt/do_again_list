@@ -2,7 +2,8 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=test_project.settings_prod
+    DJANGO_SETTINGS_MODULE=test_project.settings_prod \
+    PYTHONPATH=/app/test_project
 
 WORKDIR /app
 
