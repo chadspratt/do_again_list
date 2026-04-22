@@ -405,3 +405,41 @@ def api_auth_logout(request):
     """Log out the current user."""
     logout(request)
     return JsonResponse({"success": True})
+
+
+# ─── Import / Export ─────────────────────────────────────────────────────────
+
+
+class DataImportExportView(viewsets.GenericViewSet):
+    """
+    GET  /api/data/export/  — download all user data as JSON
+    POST /api/data/import/  — upload a previously-exported JSON blob to restore data
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["get"], url_path="export")
+    def export_data(self, request: Request) -> Response:
+        data = services.DataImportExportService().export(owner=request.user)
+        serializer = serializers.DataExportSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="import")
+    def import_data(self, request: Request) -> Response:
+        serializer = serializers.DataImportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = services.DataImportExportService().do_import(
+            owner=request.user,
+            validated_data=serializer.validated_data,
+        )
+        result_serializer = serializers.DataImportResultSerializer(
+            data={
+                "activities_created": result.activities_created,
+                "activities_updated": result.activities_updated,
+                "occurances_added": result.occurances_added,
+                "game_state_updated": result.game_state_updated,
+            }
+        )
+        result_serializer.is_valid(raise_exception=True)
+        return Response(result_serializer.data)

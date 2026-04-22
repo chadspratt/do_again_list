@@ -9,6 +9,7 @@ router = routers.SimpleRouter()
 router.register(r"activities", views.ActivityViewSet)
 router.register(r"occurances", views.OccuranceViewSet)
 router.register(r"game", views.GameStateViewSet)
+router.register(r"data", views.DataImportExportView, basename="data")
 
 # === LEGACY === #
 

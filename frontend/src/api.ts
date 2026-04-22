@@ -156,3 +156,27 @@ export async function authLogout(): Promise<AuthResponse> {
   const res = await apiRequest(`${AUTH_BASE}/auth/logout/`, 'POST', {});
   return res.json() as Promise<AuthResponse>;
 }
+
+// ─── Data Import / Export ────────────────────────────────────────────────────
+
+export interface DataImportResult {
+  activities_created: number;
+  activities_updated: number;
+  occurances_added: number;
+  game_state_updated: boolean;
+}
+
+export async function exportData(): Promise<object> {
+  const res = await fetch(`${API_BASE}/data/export/?format=json`);
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  return res.json();
+}
+
+export async function importData(data: object): Promise<DataImportResult> {
+  const res = await apiRequest(`${API_BASE}/data/import/`, 'POST', data);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(JSON.stringify(err));
+  }
+  return res.json();
+}

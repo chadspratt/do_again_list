@@ -190,3 +190,109 @@ class ActivityResponseSerializer(serializers.Serializer):
 class ErrorResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     error = serializers.CharField()
+
+
+# ─── Import / Export ─────────────────────────────────────────────────────────
+
+
+class OccuranceImportSerializer(serializers.Serializer):
+    planned_time = serializers.DateTimeField(allow_null=True, required=False)
+    start_time = serializers.DateTimeField()
+    end_time = serializers.DateTimeField(allow_null=True, required=False)
+
+
+class ActivityImportSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255)
+    display_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    code_name = serializers.CharField(max_length=255, allow_null=True, required=False, default=None)
+    ordering = serializers.IntegerField(default=0)
+    default_duration = HumanReadableDurationField(allow_null=True, required=False)
+    next_time = serializers.DateTimeField(allow_null=True, required=False)
+    min_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
+    min_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
+    value = serializers.FloatField(default=1.0)
+    repeats = serializers.BooleanField(default=True)
+    is_built_in = serializers.BooleanField(default=False)
+    occurances = OccuranceImportSerializer(many=True, required=False, default=list)
+
+
+class GameStateImportSerializer(serializers.Serializer):
+    xp = serializers.IntegerField(default=0)
+    gold = serializers.IntegerField(default=0)
+    level = serializers.IntegerField(default=1)
+    base_attack = serializers.IntegerField(default=1)
+    base_defense = serializers.IntegerField(default=0)
+    base_speed = serializers.IntegerField(default=1)
+    streak = serializers.IntegerField(default=0)
+    items = serializers.ListField(default=list)
+    hero_hp = serializers.IntegerField(default=-1)
+    souls = serializers.IntegerField(default=0)
+    perm_attack = serializers.IntegerField(default=0)
+    perm_defense = serializers.IntegerField(default=0)
+    perm_speed = serializers.IntegerField(default=0)
+    perm_hp = serializers.IntegerField(default=0)
+    quest_tokens = serializers.IntegerField(default=0)
+
+
+class DataImportSerializer(serializers.Serializer):
+    """
+    Payload for POST /api/data/import/.
+
+    ``activities`` are merged by title: existing activities are updated,
+    unknown ones are created.  Occurrences are deduplicated by start_time.
+    ``game_state`` fully replaces the current run-state when provided.
+    """
+    version = serializers.IntegerField(default=1)
+    activities = ActivityImportSerializer(many=True, required=False, default=list)
+    game_state = GameStateImportSerializer(required=False, allow_null=True, default=None)
+
+
+class OccuranceExportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Occurance
+        fields = ("planned_time", "start_time", "end_time")
+
+
+class ActivityExportSerializer(serializers.ModelSerializer):
+    default_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_duration = HumanReadableDurationField(allow_null=True, required=False)
+    min_duration = HumanReadableDurationField(allow_null=True, required=False)
+    max_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
+    min_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
+    occurances = OccuranceExportSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = models.Activity
+        fields = (
+            "title",
+            "display_name",
+            "code_name",
+            "ordering",
+            "default_duration",
+            "next_time",
+            "min_duration",
+            "max_duration",
+            "max_time_between_events",
+            "min_time_between_events",
+            "value",
+            "repeats",
+            "is_built_in",
+            "occurances",
+        )
+
+
+class DataExportSerializer(serializers.Serializer):
+    version = serializers.IntegerField()
+    exported_at = serializers.DateTimeField()
+    user = serializers.DictField(child=serializers.CharField())
+    activities = ActivityExportSerializer(many=True)
+    game_state = GameStateSerializer(allow_null=True)
+
+
+class DataImportResultSerializer(serializers.Serializer):
+    activities_created = serializers.IntegerField()
+    activities_updated = serializers.IntegerField()
+    occurances_added = serializers.IntegerField()
+    game_state_updated = serializers.BooleanField()

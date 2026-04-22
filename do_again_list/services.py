@@ -273,3 +273,161 @@ class GameStateService:
             game_state.streak = 0
         game_state.save()
         return game_state
+
+
+# ─── Import / Export ─────────────────────────────────────────────────────────
+
+
+class DataImportResult:
+    """Accumulates statistics for a single import operation."""
+
+    def __init__(self) -> None:
+        self.activities_created: int = 0
+        self.activities_updated: int = 0
+        self.occurances_added: int = 0
+        self.game_state_updated: bool = False
+
+
+_ACTIVITY_FIELDS = (
+    "display_name",
+    "code_name",
+    "ordering",
+    "default_duration",
+    "next_time",
+    "min_duration",
+    "max_duration",
+    "max_time_between_events",
+    "min_time_between_events",
+    "value",
+    "repeats",
+    "is_built_in",
+)
+
+_GAME_STATE_FIELDS = (
+    "xp",
+    "gold",
+    "level",
+    "base_attack",
+    "base_defense",
+    "base_speed",
+    "streak",
+    "items",
+    "hero_hp",
+    "souls",
+    "perm_attack",
+    "perm_defense",
+    "perm_speed",
+    "perm_hp",
+    "quest_tokens",
+)
+
+
+class DataImportExportService:
+    def export(self, owner) -> dict:
+        from django.utils import timezone
+
+        activities = (
+            models.Activity.objects.filter(owner=owner)
+            .prefetch_related("occurances")
+            .order_by("ordering", "pk")
+        )
+        game_state, _ = models.GameState.objects.get_or_create(owner=owner)
+
+        activity_data = []
+        for activity in activities:
+            occurances = [
+                {
+                    "planned_time": o.planned_time.isoformat() if o.planned_time else None,
+                    "start_time": o.start_time.isoformat() if o.start_time else None,
+                    "end_time": o.end_time.isoformat() if o.end_time else None,
+                }
+                for o in activity.occurances.order_by("start_time")
+            ]
+            duration_fields = (
+                "default_duration",
+                "min_duration",
+                "max_duration",
+                "max_time_between_events",
+                "min_time_between_events",
+            )
+            from do_again_list.utils import humanize_timedelta
+
+            activity_dict: dict = {
+                "title": activity.title,
+                "display_name": activity.display_name,
+                "code_name": activity.code_name,
+                "ordering": activity.ordering,
+                "next_time": activity.next_time.isoformat() if activity.next_time else None,
+                "value": activity.value,
+                "repeats": activity.repeats,
+                "is_built_in": activity.is_built_in,
+                "occurances": occurances,
+            }
+            for field_name in duration_fields:
+                val = getattr(activity, field_name)
+                activity_dict[field_name] = humanize_timedelta(val) if val else None
+            activity_data.append(activity_dict)
+
+        return {
+            "version": 1,
+            "exported_at": timezone.now().isoformat(),
+            "user": {
+                "username": owner.username,
+                "email": owner.email,
+            },
+            "activities": activity_data,
+            "game_state": {field_name: getattr(game_state, field_name) for field_name in _GAME_STATE_FIELDS},
+        }
+
+    def do_import(self, *, owner, validated_data: dict) -> DataImportResult:
+        result = DataImportResult()
+
+        for activity_data in validated_data.get("activities", []):
+            occurances_data = activity_data.pop("occurances", [])
+            title = activity_data["title"]
+
+            activity, created = models.Activity.objects.get_or_create(
+                owner=owner,
+                title=title,
+                defaults={k: activity_data.get(k) for k in _ACTIVITY_FIELDS},
+            )
+
+            if created:
+                result.activities_created += 1
+            else:
+                for field_name in _ACTIVITY_FIELDS:
+                    if field_name in activity_data:
+                        setattr(activity, field_name, activity_data[field_name])
+                activity.save()
+                result.activities_updated += 1
+
+            # Deduplicate occurrences by start_time
+            existing_start_times = set(
+                models.Occurance.objects.filter(activity=activity).values_list(
+                    "start_time", flat=True
+                )
+            )
+            new_occurances = [
+                models.Occurance(
+                    activity=activity,
+                    planned_time=o.get("planned_time"),
+                    start_time=o["start_time"],
+                    end_time=o.get("end_time"),
+                )
+                for o in occurances_data
+                if o["start_time"] not in existing_start_times
+            ]
+            if new_occurances:
+                models.Occurance.objects.bulk_create(new_occurances)
+                result.occurances_added += len(new_occurances)
+
+        game_state_data = validated_data.get("game_state")
+        if game_state_data:
+            game_state, _ = models.GameState.objects.get_or_create(owner=owner)
+            for field_name in _GAME_STATE_FIELDS:
+                if field_name in game_state_data:
+                    setattr(game_state, field_name, game_state_data[field_name])
+            game_state.save()
+            result.game_state_updated = True
+
+        return result

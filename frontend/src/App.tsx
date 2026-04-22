@@ -25,6 +25,7 @@ import { OneTimePanel } from './components/OneTimePanel';
 import { Lane, type LaneHandle } from './components/Lane';
 import { LandingPage } from './components/LandingPage';
 import { RunOverScreen } from './components/RunOverScreen';
+import { DataAdminPage } from './components/DataAdminPage';
 import { sortEventsByDue } from './utils';
 import './App.css';
 
@@ -39,6 +40,7 @@ export default function App() {
   const [useCodeNames, setUseCodeNames] = useState(false);
   const laneRef = useRef<LaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [showAdmin, setShowAdmin] = useState(false);
   // Prestige / run-over state
   const [runOverData, setRunOverData] = useState<{ soulsEarned: number } | null>(null);
   const [runKey, setRunKey] = useState(0);  // increment to force Lane remount
@@ -279,6 +281,22 @@ export default function App() {
     );
   }
 
+  if (showAdmin) {
+    return (
+      <>
+        <Header
+          user={user}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          onLogout={handleLogout}
+          onAdmin={() => setShowAdmin(true)}
+          adminActive
+        />
+        <DataAdminPage onClose={() => setShowAdmin(false)} />
+      </>
+    );
+  }
+
   return (
     <>
       <Header
@@ -286,6 +304,7 @@ export default function App() {
         onLogin={handleLogin}
         onRegister={handleRegister}
         onLogout={handleLogout}
+        onAdmin={() => setShowAdmin(true)}
       />
       {gameState && (
         <Lane
