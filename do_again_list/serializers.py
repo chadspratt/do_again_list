@@ -287,14 +287,6 @@ class ActivityExportSerializer(serializers.ModelSerializer):
         )
 
 
-class DataExportSerializer(serializers.Serializer):
-    version = serializers.IntegerField()
-    exported_at = serializers.DateTimeField()
-    user = serializers.DictField(child=serializers.CharField())
-    activities = ActivityExportSerializer(many=True)
-    game_state = GameStateSerializer(allow_null=True)
-
-
 class DataImportResultSerializer(serializers.Serializer):
     activities_created = serializers.IntegerField()
     activities_updated = serializers.IntegerField()

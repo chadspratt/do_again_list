@@ -421,9 +421,7 @@ class DataImportExportView(viewsets.GenericViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_data(self, request: Request) -> Response:
         data = services.DataImportExportService().export(owner=request.user)
-        serializer = serializers.DataExportSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)
+        return Response(data)
 
     @action(detail=False, methods=["post"], url_path="import")
     def import_data(self, request: Request) -> Response:
