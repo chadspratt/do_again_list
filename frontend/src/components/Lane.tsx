@@ -11,6 +11,7 @@ import {
   createBattleState,
   tick,
   spawnEnemyFromEvent,
+  queueEnemyFromEvent,
   applyBuff,
   type BattleState,
 } from '../game/engine';
@@ -147,7 +148,7 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
         },
       ) {
         const battle = battleRef.current;
-        if (battle) spawnEnemyFromEvent(battle, level, statModifier);
+        if (battle) queueEnemyFromEvent(battle, level, statModifier);
       },
       applyBuff(
         stat: 'ATTACK' | 'DEFENSE' | 'SPEED',

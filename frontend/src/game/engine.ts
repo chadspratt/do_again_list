@@ -48,6 +48,11 @@ export interface HeroBuff {
   label: string;
 }
 
+export interface QueuedEnemy {
+  level: number;
+  statModifier?: EnemyStatModifier;
+}
+
 export interface BattleState {
   hero: Hero;
   enemies: Enemy[];
@@ -58,6 +63,7 @@ export interface BattleState {
   enemyIdCounter: number;
   pendingHeal: boolean;
   pendingFatigue: boolean;
+  enemyQueue: QueuedEnemy[];
 }
 
 // ── Constants ──
@@ -85,7 +91,8 @@ export function createBattleState(gameState: GameState): BattleState {
     running: true,
     enemyIdCounter: 0,
     pendingHeal: false,
-    pendingFatigue: false
+    pendingFatigue: false,
+    enemyQueue: [],
   };
 }
 
@@ -156,6 +163,17 @@ export function spawnEnemyFromEvent(
   const color = totalMod > 0 ? '#ef4444' : totalMod < 0 ? '#facc15' : '#f97316';
   const label = totalMod > 0 ? 'Strengthened' : totalMod < 0 ? 'Weakened' : '';
   addFloatingText(state, CANVAS_W - 100, GROUND_Y - 60, `Enemy Lv${level}${label ? ' ' + label : ''}!`, color);
+}
+
+/**
+ * Add an enemy to the spawn queue. It will be spawned once the lane is clear of living enemies.
+ */
+export function queueEnemyFromEvent(
+  state: BattleState,
+  level: number,
+  statModifier?: EnemyStatModifier,
+): void {
+  state.enemyQueue.push({ level, statModifier });
 }
 
 /**
@@ -273,6 +291,12 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
 
   // Remove fully faded enemies
   state.enemies = state.enemies.filter(e => !e.dead || e.deathTimer > 0);
+
+  // Spawn next queued enemy once the lane is clear of living enemies
+  if (state.enemyQueue.length > 0 && state.enemies.every(e => e.dead)) {
+    const next = state.enemyQueue.shift()!;
+    spawnEnemyFromEvent(state, next.level, next.statModifier);
+  }
 
   // Find lowest-health living enemy in attack range
   const livingEnemies = state.enemies.filter(e => !e.dead);

@@ -27,8 +27,7 @@ export function LandingPage({ user, onLogin, onRegister, onLogout }: LandingPage
       <section className="landing-section">
         <h2>Built for real life, not spreadsheets</h2>
         <p>
-          Most habit trackers punish you the moment you miss a day. <strong>Do
-          Again List</strong> is different. It knows you're busy. It knows
+          Most habit trackers punish you the moment you miss a day. <strong>IncrementalList</strong> is different. It knows you're busy. It knows
           you'll forget. The whole point is to <em>do the thing</em>, not to
           perfectly maintain a streak in an app. Log roughly when something
           happened and move on with your life.
