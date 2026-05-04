@@ -455,7 +455,7 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
               <button
                 className="speed-btn"
                 onClick={() => {
-                  const next = Math.min(4, gameSpeed + 1);
+                  const next = Math.min(8, gameSpeed + 1);
                   setGameSpeed(next);
                   gameSpeedRef.current = next;
                 }}
