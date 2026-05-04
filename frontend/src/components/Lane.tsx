@@ -91,6 +91,9 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
   const lastTimeRef = useRef<number>(0);
   const isRunOverRef = useRef(false);
 
+  const [gameSpeed, setGameSpeed] = useState(1);
+  const gameSpeedRef = useRef(1);
+
   // Callback to fire when the leaving_guild walk-away finishes
   const leaveCallbackRef = useRef<(() => void) | null>(null);
 
@@ -288,7 +291,8 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
       if (!ctx) return;
 
       if (lastTimeRef.current === 0) lastTimeRef.current = timestamp;
-      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.1);
+      const rawDt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.1);
+      const dt = rawDt * gameSpeedRef.current;
       lastTimeRef.current = timestamp;
 
       const currentMode = modeRef.current;
@@ -434,7 +438,32 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
       <GameHUD
         gameState={gameState}
         extraStats={
-          <span className="stat">🔥 Streak: {killStreak}</span>
+          <>
+            <span className="stat">🔥 Streak: {killStreak}</span>
+            <span className="stat speed-controls">
+              <button
+                className="speed-btn"
+                onClick={() => {
+                  const next = Math.max(1, gameSpeed - 1);
+                  setGameSpeed(next);
+                  gameSpeedRef.current = next;
+                }}
+                disabled={gameSpeed <= 1}
+                title="Decrease speed"
+              >−</button>
+              <span title="Game speed">{gameSpeed}×</span>
+              <button
+                className="speed-btn"
+                onClick={() => {
+                  const next = Math.min(4, gameSpeed + 1);
+                  setGameSpeed(next);
+                  gameSpeedRef.current = next;
+                }}
+                disabled={gameSpeed >= 8}
+                title="Increase speed"
+              >+</button>
+            </span>
+          </>
         }
         onQuestClick={!isQuestMode ? enterQuestMode : undefined}
       />
