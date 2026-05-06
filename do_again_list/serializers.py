@@ -132,6 +132,7 @@ class RunOverResponseSerializer(serializers.Serializer):
     """Response body for POST /game/run_over/."""
     game = GameStateSerializer()
     souls_earned = serializers.IntegerField()
+    level_reached = serializers.IntegerField()
 
 
 class MetaUpgradeSerializer(serializers.Serializer):

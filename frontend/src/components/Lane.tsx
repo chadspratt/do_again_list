@@ -51,14 +51,14 @@ export interface LaneHandle {
 interface LaneProps {
   gameState: GameState;
   onGameStateUpdate: (gs: GameState) => void;
-  /** Called with souls earned + updated GameState when the run ends (hero dies). */
-  onRunOver: (soulsEarned: number, gs: GameState) => void;
+  /** Called with souls earned + level reached + updated GameState when the run ends (hero dies). */
+  onRunOver: (soulsEarned: number, levelReached: number, gs: GameState) => void;
   /** Whether the app wants quest mode active. */
   questActive: boolean;
   /** Called when the quest walk-away finishes successfully. */
   onQuestComplete: (goldEarned: number, xpEarned: number, heroHp: number) => void;
   /** Called when the hero dies during a quest. */
-  onQuestFailed: (soulsEarned: number, gs: GameState) => void;
+  onQuestFailed: (soulsEarned: number, levelReached: number, gs: GameState) => void;
   /** Called when the player leaves the guild / exits quest voluntarily. */
   onExitQuest: () => void;
 }
@@ -332,7 +332,7 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
           isRunOverRef.current = true;
           cancelAnimationFrame(animationRef.current);
           runOverRun()
-            .then(({ game, souls_earned }) => onRunOver(souls_earned, game))
+            .then(({ game, souls_earned, level_reached }) => onRunOver(souls_earned, level_reached, game))
             .catch((error) =>
               console.error('Failed to call run_over:', error),
             );
@@ -365,20 +365,37 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
           setQuests(generateQuests(gameStateRef.current));
         }
 
-        // Quest complete — hero returned to guild, now walk away
+        // Quest complete — hero returned to guild
         if (result.questComplete) {
           const heroHp = result.heroHpAfterHeal;
           // Sync completion XP + heal immediately so level-ups apply right away
           syncBattleState(0, result.completionXp, 0, heroHp)
-            .then((gs) => onGameStateUpdate(gs))
+            .then((gs) => {
+              onGameStateUpdate(gs);
+              // Always fire onQuestComplete so App-level rewards (loadGameState etc.) are applied
+              onQuestComplete(0, 0, heroHp);
+              // If the player still has quest tokens, prompt them to do another quest
+              if (gs.quest_tokens > 0) {
+                setTimeout(() => {
+                  const currentQs = questRef.current;
+                  if (currentQs) {
+                    currentQs.phase = 'at_guild';
+                    setQuests(generateQuests(gs));
+                    setShowBoard(true);
+                  }
+                }, 800);
+              } else {
+                // No more tokens — hero walks away
+                leaveCallbackRef.current = () => {
+                  returnToBattle();
+                };
+                setTimeout(() => {
+                  const currentQs = questRef.current;
+                  if (currentQs) beginLeavingGuild(currentQs);
+                }, 800);
+              }
+            })
             .catch((err) => console.error('Quest completion sync failed:', err));
-          leaveCallbackRef.current = () => {
-            returnToBattle();
-            onQuestComplete(0, 0, heroHp);
-          };
-          setTimeout(() => {
-            beginLeavingGuild(qs);
-          }, 800);
         }
 
         // Hero walked far enough from the guild — fire the leave callback
@@ -398,11 +415,11 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
           cancelAnimationFrame(animationRef.current);
           setTimeout(() => {
             runOverRun()
-              .then(({ game, souls_earned }) => {
+              .then(({ game, souls_earned, level_reached }) => {
                 questRef.current = null;
                 modeRef.current = 'battle';
                 setMode('battle');
-                onQuestFailed(souls_earned, game);
+                onQuestFailed(souls_earned, level_reached, game);
               })
               .catch((err) =>
                 console.error('Quest run_over failed:', err),

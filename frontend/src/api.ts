@@ -107,6 +107,7 @@ export async function syncBattleState(gold: number, xp: number, streak: number, 
 export interface RunOverResponse {
   game: GameState;
   souls_earned: number;
+  level_reached: number;
 }
 
 /** Call when the hero's run ends. Converts current XP/level to souls and resets run state. */

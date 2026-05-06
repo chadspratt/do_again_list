@@ -5,6 +5,7 @@ import type { UpgradeType } from '../api';
 interface RunOverScreenProps {
   gameState: GameState;
   soulsEarned: number;
+  levelReached: number;
   onUpgrade: (upgrade: UpgradeType) => Promise<void>;
   onStartNewRun: () => void;
 }
@@ -52,7 +53,7 @@ function upgradeCost(currentLevel: number): number {
   return (currentLevel + 1) * 10;
 }
 
-export function RunOverScreen({ gameState, soulsEarned, onUpgrade, onStartNewRun }: RunOverScreenProps) {
+export function RunOverScreen({ gameState, soulsEarned, levelReached, onUpgrade, onStartNewRun }: RunOverScreenProps) {
   const [pending, setPending] = useState<UpgradeType | null>(null);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
@@ -76,7 +77,7 @@ export function RunOverScreen({ gameState, soulsEarned, onUpgrade, onStartNewRun
         <div className="run-over-stats">
           <div className="run-over-stat">
             <span className="stat-label">Level Reached</span>
-            <span className="stat-value">⭐ {gameState.level}</span>
+            <span className="stat-value">⭐ {levelReached}</span>
           </div>
           <div className="run-over-stat run-over-stat--highlight">
             <span className="stat-label">Souls Earned</span>

@@ -273,6 +273,7 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         Run-local fields (xp, gold, level, base_*, streak, items, hero_hp) are reset.
         """
         game_state, _ = GameState.objects.get_or_create(owner=request.user)
+        level_reached = game_state.level
         souls_earned = game_state.souls_for_run()
         game_state.souls += souls_earned
         # Reset run-local state
@@ -287,7 +288,7 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         game_state.hero_hp = -1
         game_state.save()
         serializer = serializers.RunOverResponseSerializer(
-            data={"game": serializers.GameStateSerializer(game_state).data, "souls_earned": souls_earned}
+            data={"game": serializers.GameStateSerializer(game_state).data, "souls_earned": souls_earned, "level_reached": level_reached}
         )
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)

@@ -42,7 +42,7 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   // Prestige / run-over state
-  const [runOverData, setRunOverData] = useState<{ soulsEarned: number } | null>(null);
+  const [runOverData, setRunOverData] = useState<{ soulsEarned: number; levelReached: number } | null>(null);
   const [runKey, setRunKey] = useState(0);  // increment to force Lane remount
   // Quest state
   const [questActive, setQuestActive] = useState(false);
@@ -195,9 +195,9 @@ export default function App() {
     [],
   );
 
-  const handleRunOver = useCallback((soulsEarned: number, gs: GameState) => {
+  const handleRunOver = useCallback((soulsEarned: number, levelReached: number, gs: GameState) => {
     setGameState(gs);
-    setRunOverData({ soulsEarned });
+    setRunOverData({ soulsEarned, levelReached });
   }, []);
 
   const handleMetaUpgrade = useCallback(async (upgrade: UpgradeType) => {
@@ -231,10 +231,10 @@ export default function App() {
     loadGameState();
   }, [loadGameState]);
 
-  const handleQuestFailed = useCallback((soulsEarned: number, gs: GameState) => {
+  const handleQuestFailed = useCallback((soulsEarned: number, levelReached: number, gs: GameState) => {
     setQuestActive(false);
     setGameState(gs);
-    setRunOverData({ soulsEarned });
+    setRunOverData({ soulsEarned, levelReached });
   }, []);
 
   const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
@@ -323,6 +323,7 @@ export default function App() {
         <RunOverScreen
           gameState={gameState}
           soulsEarned={runOverData.soulsEarned}
+          levelReached={runOverData.levelReached}
           onUpgrade={handleMetaUpgrade}
           onStartNewRun={handleStartNewRun}
         />
