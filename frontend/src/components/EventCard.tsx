@@ -12,6 +12,8 @@ interface EventCardProps {
   dataEventId?: number;
   useCodeNames?: boolean;
   hintCodeNames?: boolean;
+  isPinned?: boolean;
+  onPin?: (id: number | null) => void;
 }
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -23,7 +25,7 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
   hour12: true,
 };
 
-export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId, useCodeNames, hintCodeNames }: EventCardProps) {
+export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId, useCodeNames, hintCodeNames, isPinned, onPin }: EventCardProps) {
   const {
     startInput, setStartInput,
     endInput, setEndInput,
@@ -80,6 +82,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       style={wrapperHeight !== null ? { minHeight: wrapperHeight } : undefined}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={() => onPin?.(event.id)}
     >
     <div
       className={`event-card${cardKind ? ' ' + cardKind : ''}${isHovered ? ' hovered' : ''}`}
@@ -101,7 +104,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
       </div>
       <div className="event-timer">{timerText}</div>
 
-    {isHovered && (
+    {(isHovered || isPinned) && (
       <>
         {!event.is_built_in && (
           <>
@@ -113,7 +116,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
                     value={startInput}
                     onChange={(e) => setStartInput(e.target.value)}
                     />
-                    <button className="btn btn-success btn-sm" onClick={handleStart} title="Start">
+                    <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleStart(); onPin?.(null); }} title="Start">
                     Start
                     </button>
                 </div>
@@ -126,7 +129,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
                 value={endInput}
                 onChange={(e) => setEndInput(e.target.value)}
                 />
-                <button className="btn btn-primary btn-sm" onClick={handleEnd} title="End">
+                <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); handleEnd(); onPin?.(null); }} title="End">
                 End
                 </button>
             </div>
@@ -141,7 +144,7 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
                 value={nextInput}
                 onChange={(e) => setNextInput(e.target.value)}
                 />
-                <button className="btn btn-secondary btn-sm" onClick={handleNext} title="Set next time">
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleNext(); onPin?.(null); }} title="Set next time">
                 Next
                 </button>
             </div>

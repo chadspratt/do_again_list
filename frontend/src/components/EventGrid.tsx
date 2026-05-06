@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import type { DoAgainEvent } from '../types';
 import { EventCard } from './EventCard';
 
@@ -21,6 +21,22 @@ export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, use
   const prevRectsRef = useRef<Map<number, DOMRect>>(new Map());
   // Stores the previous ordering of event IDs so we only animate on actual reorder
   const prevOrderRef = useRef<string>('');
+
+  const [pinnedCardId, setPinnedCardId] = useState<number | null>(null);
+
+  // Unpin when clicking outside any event card (capture phase fires before card onClick)
+  useEffect(() => {
+    if (pinnedCardId === null) return;
+    function handleDocClick(e: MouseEvent) {
+      const grid = gridRef.current;
+      if (!grid) return;
+      const pinnedCard = grid.querySelector(`[data-event-id="${pinnedCardId}"]`);
+      if (pinnedCard && pinnedCard.contains(e.target as Node)) return;
+      setPinnedCardId(null);
+    }
+    document.addEventListener('click', handleDocClick, { capture: true });
+    return () => document.removeEventListener('click', handleDocClick, { capture: true });
+  }, [pinnedCardId]);
 
   const currentOrder = events.map(e => e.id).join(',');
   const orderChanged = prevOrderRef.current !== '' && prevOrderRef.current !== currentOrder;
@@ -97,6 +113,8 @@ export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, use
             dataEventId={event.id}
             useCodeNames={useCodeNames}
             hintCodeNames={hintCodeNames}
+            isPinned={pinnedCardId === event.id}
+            onPin={setPinnedCardId}
           />
         ))}
       </div>
