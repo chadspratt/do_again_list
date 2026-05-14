@@ -36,7 +36,6 @@ export default function App() {
   const [settingsEvent, setSettingsEvent] = useState<DoAgainEvent | null>(null);
   const [now, setNow] = useState(Date.now());
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [sortMode, setSortMode] = useState<'recent' | 'due'>('due');
   const [useCodeNames, setUseCodeNames] = useState(false);
   const laneRef = useRef<LaneHandle>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -52,7 +51,7 @@ export default function App() {
   const oneTimeEvents = events.filter(e => !e.repeats);
   const pendingEvents = events.filter(e => e.repeats && e.start_time === null && e.end_time === null);
   const activeEvents = events.filter(e => e.repeats && e.start_time !== null);
-  const displayedEvents = sortMode === 'due' ? sortEventsByDue(activeEvents, now) : activeEvents;
+  const displayedEvents = sortEventsByDue(activeEvents, now);
   const hintCodeNames = useCodeNames && !events.some(e => e.code_name && e.code_name.trim() !== '');
 
   const loadEvents = useCallback(async () => {
@@ -331,13 +330,6 @@ export default function App() {
       <div className="event-toolbar">
         <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
           + Add Event
-        </button>
-        <button
-          className={`btn ${sortMode === 'due' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setSortMode(m => m === 'recent' ? 'due' : 'recent')}
-          title={sortMode === 'due' ? 'Sort by most recent' : 'Sort by due time'}
-        >
-          Sorted By {sortMode === 'due' ? 'Time Till Due' : 'Time Since Last'}
         </button>
         <button
           className="btn btn-secondary"
