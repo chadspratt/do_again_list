@@ -198,8 +198,6 @@ export function computeTimerText(
   startTime: string | null,
   endTime: string | null,
   minDuration: string,
-  maxDuration: string,
-  minTimeBetween: string,
   maxTimeBetween: string,
   nextTime?: string | null,
 ): string {
@@ -208,8 +206,6 @@ export function computeTimerText(
   const hasEnd = !!endTime;
   const endMs = hasEnd ? new Date(endTime).getTime() : 0;
   const minDurMs = parseTimeOffsetMs(minDuration);
-  const maxDurMs = parseTimeOffsetMs(maxDuration);
-  const minTimeMs = parseTimeOffsetMs(minTimeBetween);
   const maxTimeMs = parseTimeOffsetMs(maxTimeBetween);
 
   // Event is started (no end_time) — ignore next_time
@@ -218,15 +214,11 @@ export function computeTimerText(
     if (minDurMs && elapsed < minDurMs) {
       return formatCountdown(minDurMs - elapsed, 'Min in');
     }
-    if (maxDurMs) {
-      const remaining = (startMs + maxDurMs) - now;
-      return formatCountdown(remaining, 'Max in');
-    }
     return elapsed >= 0 ? formatElapsed(elapsed) : 'Future event';
   }
 
   // Event is ended (has end_time)
-  // If next_time is set, it overrides min/max between for the timer
+  // If next_time is set, it overrides max_time_between for the timer
   if (nextTime) {
     const nextMs = new Date(nextTime).getTime();
     const remaining = nextMs - now;
@@ -234,9 +226,6 @@ export function computeTimerText(
   }
 
   const sinceEnd = now - endMs;
-  if (minTimeMs && sinceEnd < minTimeMs) {
-    return formatCountdown(minTimeMs - sinceEnd, 'Ready in');
-  }
   if (maxTimeMs) {
     const remaining = (endMs + maxTimeMs) - now;
     return formatCountdown(remaining, 'Due in');
@@ -245,63 +234,31 @@ export function computeTimerText(
 }
 
 /**
- * Check if event controls should be hidden (in cooldown).
- */
-export function isInCooldown(
-  now: number,
-  endTime: string | null,
-  minTimeBetween: string,
-): boolean {
-  if (!endTime) return false;
-  const endMs = new Date(endTime).getTime();
-  const minTimeMs = parseTimeOffsetMs(minTimeBetween);
-  if (!minTimeMs) return false;
-  return (now - endMs) < minTimeMs;
-}
-
-/**
  * Sort events by urgency / due time.
  *
  * Started events (no end_time), ordered by group then key:
- *   0 – exceeded max_duration        → most overtime first
- *   1 – under max but ≥ min duration → least time until max first
- *   2 – no min/max or over min       → earliest start first
+ *   2 – over min duration or no min  → earliest start first
  *   3 – under min_duration           → least time until min first
  *
  * Ended events, ordered by group then key:
  *   4 – exceeded max_time_between    → most overdue first
- *   5 – over min but under max_time  → least time until max first
- *   6 – no min/max time_between      → oldest end_time first
- *   7 – under min_time_between       → least time until min first
+ *   5 – under max_time_between       → least time until max first
+ *   6 – no max_time_between          → oldest end_time first
  */
 export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEvent[] {
   function classify(e: DoAgainEvent): [number, number] {
     if (!e.start_time) return [8, 0]; // Pending events go last
     const startMs = new Date(e.start_time).getTime();
     const minDurMs = parseTimeOffsetMs(e.min_duration);
-    const maxDurMs = parseTimeOffsetMs(e.max_duration);
-    const minTimeMs = parseTimeOffsetMs(e.min_time_between_events);
     const maxTimeMs = parseTimeOffsetMs(e.max_time_between_events);
 
     if (!e.end_time) {
       const elapsed = now - startMs;
-      if (maxDurMs > 0 && elapsed >= maxDurMs) {
-        // Most overtime first → smallest key = most overtime
-        return [0, -(elapsed - maxDurMs)];
-      }
-      if (maxDurMs > 0) {
-        // Least time until max first
-        return [1, startMs + maxDurMs];
-      }
-      if (minDurMs > 0 && elapsed >= minDurMs) {
-        // Least time since start first
-        return [2, startMs];
-      }
       if (minDurMs > 0 && elapsed < minDurMs) {
         // Least time until min first
         return [3, startMs + minDurMs];
       }
-      // No active timer (no max, min already passed or absent): earliest start first
+      // No active timer or past min: earliest start first
       return [2, startMs];
     } else {
       const endMs = new Date(e.end_time).getTime();
@@ -326,14 +283,6 @@ export function sortEventsByDue(events: DoAgainEvent[], now: number): DoAgainEve
       if (maxTimeMs > 0) {
         // Least time until max first
         return [5, endMs + maxTimeMs];
-      }
-      if (minTimeMs > 0 && sinceEnd >= minTimeMs) {
-        // Sort by ready date (end + min time between) — earliest ready first
-        return [5, endMs + minTimeMs];
-      }
-      if (minTimeMs > 0 && sinceEnd < minTimeMs) {
-        // Least time until min first
-        return [7, endMs + minTimeMs];
       }
       // No active timer: oldest end_time first
       return [5, endMs];

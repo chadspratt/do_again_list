@@ -36,8 +36,6 @@ class ActivityFilter(filters.FilterSet):
             "title",
             "default_duration",
             "min_duration",
-            "max_duration",
-            "min_time_between_events",
             "max_time_between_events",
             "value",
             "repeats",

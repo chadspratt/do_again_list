@@ -48,17 +48,14 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
     setWrapperHeight(null);
   }
 
-  const hasMin = event.min_time_between_events && event.min_time_between_events.trim() !== '';
   const hasMax = event.max_time_between_events && event.max_time_between_events.trim() !== '';
-  const cardKind = hasMax && !hasMin ? 'event-good' : hasMin && !hasMax ? 'event-bad' : '';
+  const cardKind = hasMax ? 'event-good' : '';
 
   const timerText = computeTimerText(
     now,
     event.start_time,
     event.end_time,
     event.min_duration,
-    event.max_duration,
-    event.min_time_between_events,
     event.max_time_between_events,
     event.next_time,
   );

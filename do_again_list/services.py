@@ -185,17 +185,13 @@ class ActivityService:
         if previous_next_time is not None:
             # compare when this occurance was scheduled to begin
             interval_ok = occurance.start_time < previous_next_time
-        if activity.max_duration is not None:
-            duration_ok = end_time - occurance.start_time <= activity.max_duration
         if activity.min_duration is not None:
-            duration_ok &= end_time - occurance.start_time >= activity.min_duration
+            duration_ok = end_time - occurance.start_time >= activity.min_duration
         if latest_completed_occurance is not None:
             # compare when this occurance _ought_ to occur absent an explicit schedule
             time_since_last_occurance = end_time - latest_completed_occurance.end_time # type: ignore
             if activity.max_time_between_events is not None:
                 interval_ok &= time_since_last_occurance <= activity.max_time_between_events
-            if activity.min_time_between_events is not None:
-                interval_ok &= time_since_last_occurance >= activity.min_time_between_events
 
         stat_modifier = StatModifier()
         buff_label = activity.title + f" [{activity.moral_quality}]"
@@ -212,19 +208,6 @@ class ActivityService:
                 stat_modifier.defense += 1
                 game_effect.game_state_delta.gold += 5
                 game_effect.messages.append("Good habit but late — reduced reward.")
-        elif activity.moral_quality == models.Activity.MoralQuality.BAD:
-            if not interval_ok:
-                stat_modifier.attack += -3
-                stat_modifier.defense += -2
-                stat_modifier.speed += -1
-                game_effect.messages.append("Bad habit too soon! Large penalty.")
-            else:
-                stat_modifier.attack += -1
-                stat_modifier.defense += -1
-                game_effect.messages.append(
-                    "Bad habit, but you held off — minor penalty."
-                )
-                buff_label += " (held off)"
         else:
             if interval_ok:
                 stat_modifier.attack += 2
@@ -295,9 +278,7 @@ _ACTIVITY_FIELDS = (
     "default_duration",
     "next_time",
     "min_duration",
-    "max_duration",
     "max_time_between_events",
-    "min_time_between_events",
     "value",
     "repeats",
     "is_built_in",
@@ -346,9 +327,7 @@ class DataImportExportService:
             duration_fields = (
                 "default_duration",
                 "min_duration",
-                "max_duration",
                 "max_time_between_events",
-                "min_time_between_events",
             )
             from do_again_list.utils import humanize_timedelta
 

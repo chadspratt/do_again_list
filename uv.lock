@@ -243,16 +243,16 @@ source = { editable = "." }
 dependencies = [
     { name = "django" },
     { name = "django-appconf" },
+    { name = "django-cors-headers" },
     { name = "django-filter" },
     { name = "djangorestframework" },
+    { name = "drf-spectacular" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "django-cors-headers" },
     { name = "django-stubs" },
     { name = "djangorestframework-stubs" },
-    { name = "drf-spectacular" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-django" },
@@ -265,16 +265,16 @@ dev = [
 requires-dist = [
     { name = "django", specifier = ">=5.0.0" },
     { name = "django-appconf", specifier = ">=1.2.0" },
+    { name = "django-cors-headers", specifier = ">=4.9.0" },
     { name = "django-filter", specifier = ">=25.2" },
     { name = "djangorestframework", specifier = ">=3.16.1" },
+    { name = "drf-spectacular", specifier = ">=0.29.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "django-cors-headers", specifier = ">=4.9.0" },
     { name = "django-stubs", specifier = ">=5.2.9" },
     { name = "djangorestframework-stubs", specifier = ">=3.16.8" },
-    { name = "drf-spectacular", specifier = ">=0.29.0" },
     { name = "pytest", specifier = ">=8.2.2" },
     { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "pytest-django", specifier = ">=4.8.0" },

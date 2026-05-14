@@ -9,8 +9,6 @@ export interface DoAgainEvent {
   next_time: string | null;
   default_duration: string;
   min_duration: string;
-  max_duration: string;
-  min_time_between_events: string;
   max_time_between_events: string;
   value: number;
   repeats: boolean;
@@ -24,8 +22,6 @@ export interface EventSettings {
   code_name?: string | null;
   default_duration: string;
   min_duration: string;
-  max_duration: string;
-  min_time_between_events: string;
   max_time_between_events: string;
   value: number;
   repeats: boolean;

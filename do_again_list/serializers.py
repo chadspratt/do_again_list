@@ -21,12 +21,8 @@ class HumanReadableDurationField(serializers.DurationField):
 
 class ActivitySerializer(serializers.ModelSerializer):
     default_duration = HumanReadableDurationField(allow_null=True, required=False)
-    max_duration = HumanReadableDurationField(allow_null=True, required=False)
     min_duration = HumanReadableDurationField(allow_null=True, required=False)
     max_time_between_events = HumanReadableDurationField(
-        allow_null=True, required=False
-    )
-    min_time_between_events = HumanReadableDurationField(
         allow_null=True, required=False
     )
     start_time = serializers.SerializerMethodField()
@@ -44,9 +40,7 @@ class ActivitySerializer(serializers.ModelSerializer):
             "default_duration",
             "next_time",
             "min_duration",
-            "max_duration",
             "max_time_between_events",
-            "min_time_between_events",
             "value",
             "repeats",
             "is_built_in",
@@ -214,9 +208,7 @@ class ActivityImportSerializer(serializers.Serializer):
     default_duration = HumanReadableDurationField(allow_null=True, required=False)
     next_time = serializers.DateTimeField(allow_null=True, required=False)
     min_duration = HumanReadableDurationField(allow_null=True, required=False)
-    max_duration = HumanReadableDurationField(allow_null=True, required=False)
     max_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
-    min_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
     value = serializers.FloatField(default=1.0)
     repeats = serializers.BooleanField(default=True)
     is_built_in = serializers.BooleanField(default=False)
@@ -262,10 +254,8 @@ class OccuranceExportSerializer(serializers.ModelSerializer):
 
 class ActivityExportSerializer(serializers.ModelSerializer):
     default_duration = HumanReadableDurationField(allow_null=True, required=False)
-    max_duration = HumanReadableDurationField(allow_null=True, required=False)
     min_duration = HumanReadableDurationField(allow_null=True, required=False)
     max_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
-    min_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
     occurances = OccuranceExportSerializer(many=True, read_only=True)
 
     class Meta:
@@ -278,9 +268,7 @@ class ActivityExportSerializer(serializers.ModelSerializer):
             "default_duration",
             "next_time",
             "min_duration",
-            "max_duration",
             "max_time_between_events",
-            "min_time_between_events",
             "value",
             "repeats",
             "is_built_in",

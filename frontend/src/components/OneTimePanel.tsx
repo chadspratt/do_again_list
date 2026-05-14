@@ -46,8 +46,6 @@ function OneTimeCard({
         event.start_time,
         event.end_time,
         event.min_duration,
-        event.max_duration,
-        event.min_time_between_events,
         event.max_time_between_events,
         event.next_time,
       );

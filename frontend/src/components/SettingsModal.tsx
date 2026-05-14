@@ -14,8 +14,6 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
   const [codeName, setCodeName] = useState('');
   const [defaultDuration, setDefaultDuration] = useState('');
   const [minDuration, setMinDuration] = useState('');
-  const [maxDuration, setMaxDuration] = useState('');
-  const [minTime, setMinTime] = useState('');
   const [maxTime, setMaxTime] = useState('');
   const [value, setValue] = useState(1.0);
   const [repeats, setRepeats] = useState(true);
@@ -26,8 +24,6 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
       setCodeName(event.code_name || '');
       setDefaultDuration(event.default_duration || '');
       setMinDuration(event.min_duration || '');
-      setMaxDuration(event.max_duration || '');
-      setMinTime(event.min_time_between_events || '');
       setMaxTime(event.max_time_between_events || '');
       setValue(event.value ?? 1.0);
       setRepeats(event.repeats ?? true);
@@ -47,8 +43,6 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
           }),
       default_duration: defaultDuration,
       min_duration: minDuration,
-      max_duration: maxDuration,
-      min_time_between_events: minTime,
       max_time_between_events: maxTime,
       value,
       repeats,
@@ -108,32 +102,6 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
           />
           <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
             Countdown shown while event is active, until this duration has elapsed since start.
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label>Max Duration (e.g. 2h)</label>
-          <input
-            type="text"
-            placeholder="e.g. 2h"
-            value={maxDuration}
-            onChange={(e) => setMaxDuration(e.target.value)}
-          />
-          <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
-            After min duration, counts down to this. Can go negative to show overtime.
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label>Min Time Between Events (e.g. 1d5h)</label>
-          <input
-            type="text"
-            placeholder="e.g. 1d5h"
-            value={minTime}
-            onChange={(e) => setMinTime(e.target.value)}
-          />
-          <small style={{ color: '#666', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
-            After ending, shows count down to this until reached.
           </small>
         </div>
 
