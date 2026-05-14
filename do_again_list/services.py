@@ -31,6 +31,7 @@ class GameStateDelta(Addable):
     streak: int = 0
     hero_hp: int = 0
     quest_tokens: int = 0
+    souls: int = 0
     # items: list[Item] = []
 
 
@@ -129,6 +130,8 @@ class ActivityService:
         self, *, activity: models.Activity, start_time: datetime.datetime, **kwargs
     ) -> GameEffect:
         game_effect = GameEffect()
+        if activity.state == models.Activity.State.PENDING:
+            game_effect.game_state_delta.souls += 5
         created = False
         try:
             occurance = models.Occurance.objects.get(activity=activity, end_time=None)
@@ -158,6 +161,8 @@ class ActivityService:
         **kwargs,
     ):
         game_effect = GameEffect()
+        if activity.state == models.Activity.State.PENDING:
+            game_effect.game_state_delta.souls += 5
         latest_completed_occurance = self._get_latest_completed_occurrance(
             activity=activity
         )
