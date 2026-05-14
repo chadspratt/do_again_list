@@ -22,6 +22,9 @@ def user_factory(db):
     yield _factory
     for resource in resources:
         try:
+            # Delete PROTECT-ed related objects before the user
+            models.GameState.objects.filter(owner=resource).delete()
+            models.Activity.objects.filter(owner=resource).delete()
             resource.delete()
         except resource_model.DoesNotExist:
             pass

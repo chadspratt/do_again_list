@@ -17,7 +17,8 @@ class TestActivityViewSetE2E:
         )
         print(response.text)
         assert response.status_code == 201
-        assert response.json()["spawn_enemy"] is None
+        # Creating an activity auto-completes the "Add to List" built-in, which spawns an enemy
+        assert response.json()["spawn_enemy"] is not None
         game_state.refresh_from_db()
         assert game_state.base_attack == starting_base_attack + 1
         created_activity = models.Activity.objects.get(
@@ -35,7 +36,7 @@ class TestActivityViewSetE2E:
 
         response = user_api_client.post(
             f"/api/do-again/activities/{activity.pk}/end/",
-            {"at_time": timezone.now(), "kill_streak": 3},
+            {"end_time": timezone.now(), "kill_streak": 3},
         )
         print(response.text)
         assert response.status_code == 200
