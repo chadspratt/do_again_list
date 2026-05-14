@@ -131,7 +131,7 @@ class RunOverResponseSerializer(serializers.Serializer):
 
 class MetaUpgradeSerializer(serializers.Serializer):
     """Request body for POST /game/meta_upgrade/."""
-    upgrade = serializers.ChoiceField(choices=["attack", "defense", "speed", "hp"])
+    upgrade = serializers.ChoiceField(choices=["attack", "defense", "speed", "hp", "game_speed"])
 
 
 class ActivityActionSerializer(serializers.Serializer):

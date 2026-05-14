@@ -100,6 +100,9 @@ class GameState(models.Model):
     # ── Quest system ──
     quest_tokens = models.IntegerField(default=0)  # earned by completing activities
 
+    # ── Game speed ──
+    max_game_speed = models.IntegerField(default=1)  # unlocked max speed tier (1/2/4/8)
+
     # ── Computed stats ──
 
     def total_attack(self):

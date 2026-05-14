@@ -52,4 +52,6 @@ export interface GameState {
   perm_hp: number;
   // ── Quest system ──
   quest_tokens: number;
+  // ── Game speed ──
+  max_game_speed: number;
 }

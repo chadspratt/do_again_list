@@ -457,29 +457,35 @@ export const Lane = forwardRef<LaneHandle, LaneProps>(function Lane(
         extraStats={
           <>
             <span className="stat">🔥 Streak: {killStreak}</span>
-            <span className="stat speed-controls">
-              <button
-                className="speed-btn"
-                onClick={() => {
-                  const next = Math.max(1, gameSpeed - 1);
-                  setGameSpeed(next);
-                  gameSpeedRef.current = next;
-                }}
-                disabled={gameSpeed <= 1}
-                title="Decrease speed"
-              >−</button>
-              <span title="Game speed">{gameSpeed}×</span>
-              <button
-                className="speed-btn"
-                onClick={() => {
-                  const next = Math.min(8, gameSpeed + 1);
-                  setGameSpeed(next);
-                  gameSpeedRef.current = next;
-                }}
-                disabled={gameSpeed >= 8}
-                title="Increase speed"
-              >+</button>
-            </span>
+            {gameState.max_game_speed > 1 && (
+              <span className="stat speed-controls">
+                <button
+                  className="speed-btn"
+                  onClick={() => {
+                    const tiers = [1, 2, 4, 8];
+                    const idx = tiers.indexOf(gameSpeed);
+                    const next = tiers[Math.max(0, idx - 1)];
+                    setGameSpeed(next);
+                    gameSpeedRef.current = next;
+                  }}
+                  disabled={gameSpeed <= 1}
+                  title="Decrease speed"
+                >−</button>
+                <span title="Game speed">{gameSpeed}×</span>
+                <button
+                  className="speed-btn"
+                  onClick={() => {
+                    const tiers = [1, 2, 4, 8];
+                    const idx = tiers.indexOf(gameSpeed);
+                    const next = tiers[Math.min(tiers.indexOf(gameState.max_game_speed), idx + 1)];
+                    setGameSpeed(next);
+                    gameSpeedRef.current = next;
+                  }}
+                  disabled={gameSpeed >= gameState.max_game_speed}
+                  title="Increase speed"
+                >+</button>
+              </span>
+            )}
           </>
         }
         onQuestClick={!isQuestMode ? enterQuestMode : undefined}

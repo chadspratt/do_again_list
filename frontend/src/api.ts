@@ -117,7 +117,7 @@ export async function runOverRun(): Promise<RunOverResponse> {
   return res.json();
 }
 
-export type UpgradeType = 'attack' | 'defense' | 'speed' | 'hp';
+export type UpgradeType = 'attack' | 'defense' | 'speed' | 'hp' | 'game_speed';
 
 /** Spend souls to buy one level of a permanent upgrade. */
 export async function metaUpgrade(upgrade: UpgradeType): Promise<GameState> {

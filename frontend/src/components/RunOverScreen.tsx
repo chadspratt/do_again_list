@@ -16,7 +16,16 @@ interface UpgradeDef {
   emoji: string;
   currentLevel: (gs: GameState) => number;
   nextEffect: (gs: GameState) => string;
+  /** Custom cost function; defaults to the standard (level+1)*10 formula. */
+  costFn?: (gs: GameState) => number;
+  /** Returns true when no further upgrade is available. */
+  isMaxed?: (gs: GameState) => boolean;
+  /** Custom level label; defaults to "Lv {n}". */
+  levelLabel?: (gs: GameState) => string;
 }
+
+const GAME_SPEED_TIER_COSTS: Record<number, number> = { 1: 10, 2: 20, 4: 40 };
+const GAME_SPEED_TIER_NEXT: Record<number, number> = { 1: 2, 2: 4, 4: 8 };
 
 const UPGRADES: UpgradeDef[] = [
   {
@@ -46,6 +55,19 @@ const UPGRADES: UpgradeDef[] = [
     emoji: '❤️',
     currentLevel: gs => gs.perm_hp,
     nextEffect: gs => `+${(gs.perm_hp + 1) * 10} permanent max HP`,
+  },
+  {
+    key: 'game_speed',
+    label: 'Turbo Engine',
+    emoji: '⏩',
+    currentLevel: gs => gs.max_game_speed,
+    levelLabel: gs => `${gs.max_game_speed}×`,
+    nextEffect: gs => {
+      const next = GAME_SPEED_TIER_NEXT[gs.max_game_speed];
+      return next ? `Unlock ${next}× game speed` : 'Maximum speed reached';
+    },
+    costFn: gs => GAME_SPEED_TIER_COSTS[gs.max_game_speed] ?? 0,
+    isMaxed: gs => !(gs.max_game_speed in GAME_SPEED_TIER_COSTS),
   },
 ];
 
@@ -93,23 +115,24 @@ export function RunOverScreen({ gameState, soulsEarned, levelReached, onUpgrade,
 
         <div className="run-over-upgrades">
           {UPGRADES.map(upg => {
-            const level = upg.currentLevel(gameState);
-            const cost = upgradeCost(level);
-            const canAfford = gameState.souls >= cost;
+            const maxed = upg.isMaxed ? upg.isMaxed(gameState) : false;
+            const cost = maxed ? 0 : (upg.costFn ? upg.costFn(gameState) : upgradeCost(upg.currentLevel(gameState)));
+            const canAfford = !maxed && gameState.souls >= cost;
+            const levelDisplay = upg.levelLabel ? upg.levelLabel(gameState) : `Lv ${upg.currentLevel(gameState)}`;
             return (
               <div key={upg.key} className={`upgrade-card ${canAfford ? '' : 'upgrade-card--locked'}`}>
                 <div className="upgrade-card-header">
                   <span className="upgrade-emoji">{upg.emoji}</span>
                   <span className="upgrade-name">{upg.label}</span>
-                  <span className="upgrade-level">Lv {level}</span>
+                  <span className="upgrade-level">{levelDisplay}</span>
                 </div>
                 <div className="upgrade-effect">{upg.nextEffect(gameState)}</div>
                 <button
                   className={`btn ${canAfford ? 'btn-primary' : 'btn-secondary'}`}
-                  disabled={!canAfford || pending !== null}
+                  disabled={maxed || !canAfford || pending !== null}
                   onClick={() => handleUpgrade(upg.key)}
                 >
-                  {pending === upg.key ? '...' : `🔮 ${cost} souls`}
+                  {maxed ? 'Maxed' : pending === upg.key ? '...' : `🔮 ${cost} souls`}
                 </button>
               </div>
             );

@@ -319,13 +319,34 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         upgrade: str = serializer.validated_data["upgrade"]
 
+        game_state, _ = GameState.objects.get_or_create(owner=request.user)
+
+        if upgrade == "game_speed":
+            _tier_costs = {1: 10, 2: 20, 4: 40}
+            _tier_next = {1: 2, 2: 4, 4: 8}
+            current_max: int = game_state.max_game_speed
+            if current_max not in _tier_costs:
+                return Response(
+                    {"error": "Game speed is already at maximum."},
+                    status=400,
+                )
+            cost = _tier_costs[current_max]
+            if game_state.souls < cost:
+                return Response(
+                    {"error": f"Not enough souls. Need {cost}, have {game_state.souls}."},
+                    status=400,
+                )
+            game_state.souls -= cost
+            game_state.max_game_speed = _tier_next[current_max]
+            game_state.save()
+            return Response(serializers.GameStateSerializer(game_state).data)
+
         field_map = {
             "attack": "perm_attack",
             "defense": "perm_defense",
             "speed": "perm_speed",
             "hp": "perm_hp",
         }
-        game_state, _ = GameState.objects.get_or_create(owner=request.user)
         field_name = field_map[upgrade]
         current_level: int = getattr(game_state, field_name)
         cost = GameState.upgrade_cost(current_level)
