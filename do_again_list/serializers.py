@@ -10,10 +10,10 @@ class HumanReadableDurationField(serializers.DurationField):
     def to_representation(self, value: datetime.timedelta) -> str:
         return humanize_timedelta(value)
 
-    def to_internal_value(self, value: datetime.timedelta | str) -> datetime.timedelta:
-        if isinstance(value, datetime.timedelta):
-            return value
-        internal = parse_time_offset(value)
+    def to_internal_value(self, data: datetime.timedelta | str) -> datetime.timedelta:
+        if isinstance(data, datetime.timedelta):
+            return data
+        internal = parse_time_offset(data)
         if internal is None:
             return datetime.timedelta()
         return internal
@@ -29,7 +29,7 @@ class ActivitySerializer(serializers.ModelSerializer):
     end_time = serializers.SerializerMethodField()
     state = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta: # type: ignore
         model = models.Activity
         fields = (
             "id",
@@ -75,7 +75,7 @@ class ActivitySerializer(serializers.ModelSerializer):
 
 
 class OccuranceSerializer(serializers.ModelSerializer):
-    class Meta:
+    class Meta: # type: ignore
         model = models.Occurance
         fields = "__all__"
 
@@ -86,15 +86,21 @@ class GameStateSerializer(serializers.ModelSerializer):
     total_speed = serializers.SerializerMethodField()
     xp_to_next_level = serializers.SerializerMethodField()
     max_hp = serializers.SerializerMethodField()
+    bonus_xp = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta: # type: ignore
         model = models.GameState
-        exclude = ("owner",)
+        exclude = ("owner", "bonus_xp_updated_at")
 
     def get_max_hp(self, obj: models.GameState | dict) -> int:
         if isinstance(obj, dict):
             return obj.get("max_hp", 100)
         return obj.max_hp()
+
+    def get_bonus_xp(self, obj: models.GameState | dict) -> int:
+        if isinstance(obj, dict):
+            return obj.get("bonus_xp", 0)
+        return int(obj._compute_bonus_xp())
 
     def get_total_attack(self, obj: models.GameState | dict) -> int:
         if isinstance(obj, dict):
@@ -247,7 +253,7 @@ class DataImportSerializer(serializers.Serializer):
 
 
 class OccuranceExportSerializer(serializers.ModelSerializer):
-    class Meta:
+    class Meta: # type: ignore
         model = models.Occurance
         fields = ("planned_time", "start_time", "end_time")
 
@@ -258,7 +264,7 @@ class ActivityExportSerializer(serializers.ModelSerializer):
     max_time_between_events = HumanReadableDurationField(allow_null=True, required=False)
     occurances = OccuranceExportSerializer(many=True, read_only=True)
 
-    class Meta:
+    class Meta: # type: ignore
         model = models.Activity
         fields = (
             "title",

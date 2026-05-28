@@ -54,4 +54,6 @@ export interface GameState {
   quest_tokens: number;
   // ── Game speed ──
   max_game_speed: number;
+  // ── Bonus XP ──
+  bonus_xp: number;
 }

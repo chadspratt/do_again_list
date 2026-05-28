@@ -258,6 +258,8 @@ class GameStateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         game_state.gold += gold
         game_state.streak = streak
         game_state.hero_hp = hero_hp
+        if xp > 0:
+            xp += game_state.consume_bonus_xp()
         game_state.add_xp(xp)
         game_state.quest_tokens += quest_tokens
         game_state.save()

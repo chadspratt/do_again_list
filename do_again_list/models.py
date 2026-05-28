@@ -103,6 +103,11 @@ class GameState(models.Model):
     # ── Game speed ──
     max_game_speed = models.IntegerField(default=1)  # unlocked max speed tier (1/2/4/8)
 
+    # ── Bonus XP ──
+    # Builds up at 1/minute (capped at 50). Consumed whenever combat XP is awarded.
+    bonus_xp = models.FloatField(default=0.0)
+    bonus_xp_updated_at = models.DateTimeField(null=True, blank=True)
+
     # ── Computed stats ──
 
     def total_attack(self):
@@ -129,6 +134,21 @@ class GameState(models.Model):
     def upgrade_cost(current_level: int) -> int:
         """Soul cost to buy the next level of a permanent upgrade."""
         return (current_level + 1) * 10
+
+    def _compute_bonus_xp(self) -> float:
+        """Return the current bonus XP value including passive accumulation since last update."""
+        if self.bonus_xp_updated_at is None:
+            # Never been set — treat as if pool is full.
+            return 50.0
+        elapsed_minutes = (timezone.now() - self.bonus_xp_updated_at).total_seconds() / 60.0
+        return min(50.0, self.bonus_xp + elapsed_minutes)
+
+    def consume_bonus_xp(self) -> int:
+        """Drain the bonus XP pool and return the integer amount to award."""
+        amount = int(self._compute_bonus_xp())
+        self.bonus_xp = 0.0
+        self.bonus_xp_updated_at = timezone.now()
+        return amount
 
     def add_xp(self, amount):
         """Add XP and auto-level-up. Returns list of level-up messages."""

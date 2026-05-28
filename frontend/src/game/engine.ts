@@ -319,8 +319,11 @@ export function tick(state: BattleState, gs: GameState, dt: number): TickResult 
       state.hero.killStreak++;
       result.killStreak = state.hero.killStreak;
       addFloatingText(state, targetEnemy.x, targetEnemy.y - 40, `+${targetEnemy.goldReward}g`, '#eab308');
+      if (gs.bonus_xp >= 1) {
+        addFloatingText(state, targetEnemy.x, targetEnemy.y - 60, `+${gs.bonus_xp} Bonus XP!`, '#a855f7');
+      }
       if (state.hero.killStreak > 1) {
-        addFloatingText(state, targetEnemy.x, targetEnemy.y - 60, `${state.hero.killStreak}x streak!`, '#f59e0b');
+        addFloatingText(state, targetEnemy.x, targetEnemy.y - 80, `${state.hero.killStreak}x streak!`, '#f59e0b');
       }
     }
   }
