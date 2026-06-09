@@ -163,6 +163,9 @@ class ActivityService:
         game_effect = GameEffect()
         if activity.state == models.Activity.State.PENDING:
             game_effect.game_state_delta.souls += 5
+        if activity.is_break and activity.impulse_resisted_count > 0:
+            game_effect.game_state_delta.souls += activity.impulse_resisted_count
+            activity.impulse_resisted_count = 0
         latest_completed_occurance = self._get_latest_completed_occurrance(
             activity=activity
         )

@@ -35,8 +35,8 @@ export async function fetchEvents(): Promise<DoAgainEvent[]> {
   return res.json();
 }
 
-export async function createEvent(title: string, date: string, pending?: boolean, repeats: boolean = true): Promise<ApiResponse> {
-  const res = await apiRequest(`${API_BASE}/activities/`, 'POST', { title, repeats });
+export async function createEvent(title: string, date: string, pending?: boolean, repeats: boolean = true, is_break: boolean = false): Promise<ApiResponse> {
+  const res = await apiRequest(`${API_BASE}/activities/`, 'POST', { title, repeats, ...(is_break ? { is_break: true } : {}) });
   if (!res.ok) {
     const data = await res.json();
     return { success: false, error: data.detail || JSON.stringify(data) };
@@ -78,6 +78,12 @@ export async function deleteEvent(eventId: number): Promise<ApiResponse> {
   if (res.ok) return { success: true };
   const data = await res.json();
   return { success: false, error: data.detail || 'Delete failed' };
+}
+
+export async function resistImpulse(activityId: number): Promise<DoAgainEvent | null> {
+  const res = await apiRequest(`${API_BASE}/activities/${activityId}/resist_impulse/`, 'POST');
+  if (res.ok) return res.json();
+  return null;
 }
 
 export async function updateEventSettings(

@@ -212,6 +212,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
             error_serializer.is_valid(raise_exception=True)
             return Response(error_serializer.data, status=400)
 
+    @action(detail=True, methods=["post"])
+    def resist_impulse(self, request, pk):
+        activity = self.get_object()
+        if not activity.is_break:
+            return Response({"success": False, "error": "Not a break activity"}, status=400)
+        activity.impulse_resisted_count += 1
+        activity.save()
+        return Response(self.get_serializer(activity).data)
+
 
 class OccuranceFilter(filters.FilterSet):
     class Meta:

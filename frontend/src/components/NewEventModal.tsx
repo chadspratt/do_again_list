@@ -5,9 +5,10 @@ interface NewEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (title: string, date: string, pending?: boolean, repeats?: boolean) => void;
+  isBreak?: boolean;
 }
 
-export function NewEventModal({ isOpen, onClose, onCreate }: NewEventModalProps) {
+export function NewEventModal({ isOpen, onClose, onCreate, isBreak = false }: NewEventModalProps) {
   const [title, setTitle] = useState('');
   const [timeAgo, setTimeAgo] = useState('');
   const [pending, setPending] = useState(false);
@@ -38,7 +39,7 @@ export function NewEventModal({ isOpen, onClose, onCreate }: NewEventModalProps)
   return (
     <div className="modal-overlay active" onClick={handleOverlayClick}>
       <div className="modal">
-        <h2>Add Event</h2>
+        <h2>{isBreak ? 'Add Break' : 'Add Event'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Title *</label>
@@ -94,7 +95,7 @@ export function NewEventModal({ isOpen, onClose, onCreate }: NewEventModalProps)
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              Add Event
+              {isBreak ? 'Add Break' : 'Add Event'}
             </button>
           </div>
         </form>

@@ -8,6 +8,7 @@ interface EventGridProps {
   onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  onResistImpulse?: (eventId: number) => void;
   useCodeNames?: boolean;
   hintCodeNames?: boolean;
 }
@@ -15,7 +16,7 @@ interface EventGridProps {
 /** Duration of the FLIP reorder animation in ms */
 const FLIP_DURATION = 800;
 
-export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, useCodeNames, hintCodeNames }: EventGridProps) {
+export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, onResistImpulse, useCodeNames, hintCodeNames }: EventGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   // Stores the bounding rect of each card (keyed by event id) from the *previous* render
   const prevRectsRef = useRef<Map<number, DOMRect>>(new Map());
@@ -110,6 +111,7 @@ export function EventGrid({ events, now, onUpdate, onDelete, onOpenSettings, use
             onUpdate={onUpdate}
             onDelete={onDelete}
             onOpenSettings={onOpenSettings}
+            onResistImpulse={onResistImpulse}
             dataEventId={event.id}
             useCodeNames={useCodeNames}
             hintCodeNames={hintCodeNames}

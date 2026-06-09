@@ -33,6 +33,8 @@ class Activity(models.Model):
     max_time_between_events = models.DurationField(blank=True, null=True)
     value = models.FloatField(default=1.0)
     repeats = models.BooleanField(default=True)
+    is_break = models.BooleanField(default=False)
+    impulse_resisted_count = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         if not self.display_name:

@@ -9,6 +9,7 @@ interface EventCardProps {
   onUpdate: (eventId: number, action: string, startDatetime?: string, endDatetime?: string, nextTime?: string) => void;
   onDelete: (eventId: number) => void;
   onOpenSettings: (event: DoAgainEvent) => void;
+  onResistImpulse?: (eventId: number) => void;
   dataEventId?: number;
   useCodeNames?: boolean;
   hintCodeNames?: boolean;
@@ -25,7 +26,7 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
   hour12: true,
 };
 
-export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, dataEventId, useCodeNames, hintCodeNames, isPinned, onPin }: EventCardProps) {
+export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, onResistImpulse, dataEventId, useCodeNames, hintCodeNames, isPinned, onPin }: EventCardProps) {
   const {
     startInput, setStartInput,
     endInput, setEndInput,
@@ -100,6 +101,19 @@ export function EventCard({ event, now, onUpdate, onDelete, onOpenSettings, data
         {dateDisplay}
       </div>
       <div className="event-timer">{timerText}</div>
+
+      {event.is_break && event.start_time && !event.end_time && (
+        <div className="event-actions break-resist-row" style={{ marginTop: '6px' }}>
+          <button
+            className="btn btn-warning btn-sm"
+            onClick={(e) => { e.stopPropagation(); onResistImpulse?.(event.id); }}
+            title="Resisted an impulse"
+          >
+            Resisted
+          </button>
+          <span className="resist-count" title="Times resisted">{event.impulse_resisted_count}</span>
+        </div>
+      )}
 
     {(isHovered || isPinned) && (
       <>

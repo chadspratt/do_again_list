@@ -12,6 +12,7 @@ import {
   authLogout,
   metaUpgrade,
   syncBattleState,
+  resistImpulse,
   type UpgradeType,
 } from './api';
 import type { DoAgainEvent, EventSettings, GameState } from './types';
@@ -33,6 +34,7 @@ export default function App() {
   const [events, setEvents] = useState<DoAgainEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showBreakModal, setShowBreakModal] = useState(false);
   const [settingsEvent, setSettingsEvent] = useState<DoAgainEvent | null>(null);
   const [now, setNow] = useState(Date.now());
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -144,6 +146,30 @@ export default function App() {
       }
     },
     [loadEvents, applyGameResponse],
+  );
+
+  const handleCreateBreak = useCallback(
+    async (title: string, date: string, pending?: boolean, repeats?: boolean) => {
+      const result = await createEvent(title, date, pending, repeats ?? true, true);
+      if (result.success) {
+        setShowBreakModal(false);
+        await loadEvents();
+        applyGameResponse(result);
+      } else {
+        alert('Error creating break: ' + (result.error || ''));
+      }
+    },
+    [loadEvents, applyGameResponse],
+  );
+
+  const handleResistImpulse = useCallback(
+    async (eventId: number) => {
+      const updated = await resistImpulse(eventId);
+      if (updated) {
+        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, impulse_resisted_count: updated.impulse_resisted_count } : e));
+      }
+    },
+    [],
   );
 
   const handleUpdate = useCallback(
@@ -331,6 +357,9 @@ export default function App() {
         <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
           + Add Event
         </button>
+        <button className="btn btn-secondary" onClick={() => setShowBreakModal(true)}>
+          + Add Break
+        </button>
         <button
           className="btn btn-secondary"
           onClick={() => setUseCodeNames(v => !v)}
@@ -356,6 +385,7 @@ export default function App() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onOpenSettings={(event) => setSettingsEvent(event)}
+            onResistImpulse={handleResistImpulse}
             useCodeNames={useCodeNames}
             hintCodeNames={hintCodeNames}
           />
@@ -374,6 +404,12 @@ export default function App() {
         isOpen={showNewModal}
         onClose={() => setShowNewModal(false)}
         onCreate={handleCreate}
+      />
+      <NewEventModal
+        isOpen={showBreakModal}
+        onClose={() => setShowBreakModal(false)}
+        onCreate={handleCreateBreak}
+        isBreak
       />
       <SettingsModal
         event={settingsEvent}

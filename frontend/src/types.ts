@@ -13,6 +13,8 @@ export interface DoAgainEvent {
   value: number;
   repeats: boolean;
   is_built_in: boolean;
+  is_break: boolean;
+  impulse_resisted_count: number;
   state: 'pending' | 'active' | 'inactive';
 }
 
