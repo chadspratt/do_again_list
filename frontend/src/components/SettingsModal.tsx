@@ -17,6 +17,7 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
   const [maxTime, setMaxTime] = useState('');
   const [value, setValue] = useState(1.0);
   const [repeats, setRepeats] = useState(true);
+  const [isBreak, setIsBreak] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -27,6 +28,7 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
       setMaxTime(event.max_time_between_events || '');
       setValue(event.value ?? 1.0);
       setRepeats(event.repeats ?? true);
+      setIsBreak(event.is_break ?? false);
     }
   }, [event]);
 
@@ -46,6 +48,7 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
       max_time_between_events: maxTime,
       value,
       repeats,
+      is_break: isBreak,
     });
   }
 
@@ -143,6 +146,19 @@ export function SettingsModal({ event, onClose, onSave, useCodeNames, hintCodeNa
           />
           <label htmlFor="repeatsCheckbox" style={{ fontWeight: 'normal', margin: 0, fontSize: '.9rem' }}>
             <strong>Repeats</strong> — uncheck for one-time events
+          </label>
+        </div>
+
+        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            id="isBreakCheckbox"
+            checked={isBreak}
+            onChange={(e) => setIsBreak(e.target.checked)}
+            style={{ width: 'auto', margin: 0 }}
+          />
+          <label htmlFor="isBreakCheckbox" style={{ fontWeight: 'normal', margin: 0, fontSize: '.9rem' }}>
+            <strong>Is Break</strong> — mark this event as a break activity
           </label>
         </div>
 

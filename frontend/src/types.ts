@@ -27,6 +27,7 @@ export interface EventSettings {
   max_time_between_events: string;
   value: number;
   repeats: boolean;
+  is_break: boolean;
 }
 
 export interface GameState {
